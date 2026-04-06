@@ -6,6 +6,7 @@ import { UserModule } from './modules/users/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { RoleModule } from './modules/roles/role.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { RoleModule } from './modules/roles/role.module';
     }),
     UserModule,
     RoleModule,
+    AuthModule,
     PrismaModule,
   ],
   controllers: [AppController],
