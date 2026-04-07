@@ -8,7 +8,7 @@ import { type JwtUser } from 'src/strategies/jwt-payload.interface';
 import { ApiResponse } from 'src/common/api-response';
 import { UserResponseDto } from './dto/user.response..dto';
 
-type RequestWithUser = Request & { user: JwtUser };
+export type RequestWithUser = Request & { user: JwtUser };
 
 @Controller('/v1/users')
 export class UserController {
@@ -25,6 +25,7 @@ export class UserController {
     @Req() req: RequestWithUser,
   ): Promise<ApiResponse<UserResponseDto>> {
     const user = await this.userService.getProfile(req.user);
+
     return ApiResponse.ok(user, 'Lấy thông tin người dùng thành công');
   }
 }

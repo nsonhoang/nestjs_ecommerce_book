@@ -9,12 +9,14 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Body,
+  UseGuards,
 } from '@nestjs/common';
 import { type Request, type Response as ExpressResponse } from 'express';
 import { ApiResponse } from 'src/common/api-response';
 import { AuthService } from './auth.service';
 import { AuthResponse } from './auth.interface';
 import { AuthRequestDto } from './dto/auth.request.dto';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -30,6 +32,7 @@ export class AuthController {
     return ApiResponse.ok(user, 'đăng nhập thành công', HttpStatus.OK);
   }
 
+  //Đăng kí tài khoản mới, có thể thêm các trường như name, phone,... vào AuthRequestDto nếu cần
   @Post('/register')
   @HttpCode(HttpStatus.OK)
   register(): string {
@@ -55,5 +58,15 @@ export class AuthController {
 
     const result = await this.authService.refreshToken(refreshToken, res);
     return ApiResponse.ok(result, 'Refresh token thành công', HttpStatus.OK);
+  }
+  @Post('/logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async logout(@Req() req: Request): Promise<ApiResponse<string>> {
+    const authHeader = req.headers['authorization'];
+    const accessToken = authHeader?.split(' ')[1];
+    console.log('Access Token:', accessToken); // Debug: log access token
+    const result = await this.authService.logout(accessToken!);
+    return ApiResponse.ok(result, 'Logout successful', HttpStatus.OK);
   }
 }

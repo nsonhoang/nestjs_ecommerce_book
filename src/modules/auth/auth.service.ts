@@ -149,11 +149,49 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  private verifyToken(token: string): JwtPayload {
+    try {
+      return this.jwtService.verify(token, {
+        secret:
+          process.env.JWT_REFRESH_SECRET ||
+          process.env.JWT_SECRET ||
+          'your-secret-key',
+      });
+    } catch (error) {
+      this.logger.error('Failed to verify token', error);
+      throw new UnauthorizedException('Token không hợp lệ');
+    }
+  }
+
   register() {
     return 'đăng ký thành công';
   }
 
-  async logout() {}
+  async logout(accessToken: string): Promise<string> {
+    try {
+      // 2) Xóa refresh token trong Redis dựa trên userId lấy được từ access token
+      const payload: JwtPayload = this.verifyToken(accessToken);
+      console.log('Logout payload:', payload); // Debug: log payload
+      await this.redis.del(`refreshToken:${payload.sub}`);
+      // 3) Có thể thêm blacklist cho access token nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = payload.exp - now;
+      const hashAccessToken = this.hashToken(accessToken);
+      await this.redis.set(
+        `blacklist:${hashAccessToken}`,
+        'true',
+        'EX',
+        Math.max(0, ttl),
+      ); // Blacklist access token là thời gian sống còn lại của access token, có thể lấy từ payload.exp - hiện tại
+    } catch (error) {
+      this.logger.error('Failed to logout', error);
+      throw new UnauthorizedException(
+        'Đăng xuất thất bại: ' +
+          (error instanceof Error ? error.message : 'Lỗi không xác định'),
+      );
+    }
+    return 'đăng xuất thành công';
+  }
 
   async refreshToken(
     refreshToken: string,
@@ -231,7 +269,7 @@ export class AuthService {
       };
     } catch {
       throw new UnauthorizedException(
-        '"Refresh token không hợp lệ hoặc đã hết hạn',
+        'Refresh token không hợp lệ hoặc đã hết hạn',
       );
     }
   }
