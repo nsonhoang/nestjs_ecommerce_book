@@ -7,12 +7,17 @@ import {
   HttpStatus,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { RolesRequestDto } from '../roles/dto/roles.dto.request';
 import { RolesResponseDto } from '../roles/dto/roles.response.dto';
 import { ApiResponse } from 'src/common/api-response';
 import { RoleService } from './role.service';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decortators/roles.decorator';
+import { AuthRole } from '../auth/auth.enum';
 
 @Controller('/v1/roles')
 export class RoleController {
@@ -28,6 +33,8 @@ export class RoleController {
 
   @Post('')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN)
   async createRole(
     @Body() data: RolesRequestDto,
   ): Promise<ApiResponse<RolesResponseDto>> {
@@ -37,6 +44,8 @@ export class RoleController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN)
   async deleteRole(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     await this.roleService.deleteRoleById(id);
     return ApiResponse.message('Xóa role thành công ');
