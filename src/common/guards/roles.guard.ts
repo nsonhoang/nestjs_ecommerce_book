@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 
 import type { JwtUser } from 'src/strategies/jwt-payload.interface';
-import { ROLES_KEY } from '../decortators/roles.decorator';
+import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {

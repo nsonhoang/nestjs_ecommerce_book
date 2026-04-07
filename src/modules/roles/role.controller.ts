@@ -16,8 +16,8 @@ import { ApiResponse } from 'src/common/api-response';
 import { RoleService } from './role.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decortators/roles.decorator';
-import { AuthRole } from '../auth/auth.enum';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { AuthRole } from './roles.enum';
 
 @Controller('/v1/roles')
 export class RoleController {
@@ -25,6 +25,8 @@ export class RoleController {
 
   @Get('')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN)
   getRoles(): Promise<ApiResponse<RolesResponseDto[]>> {
     return this.roleService
       .getRoles()

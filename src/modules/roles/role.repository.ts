@@ -20,14 +20,14 @@ export class RoleRepository {
     return roles;
   }
 
-  async findByName(name: string): Promise<boolean> {
+  async findByName(name: string): Promise<RolesResponseDto | null> {
     console.log('name', name);
     const role = await this.prisma.role.findUnique({
       where: {
         name,
       },
     });
-    return !!role;
+    return role;
   }
   async findById(id: string): Promise<RolesResponseDto | null> {
     const role = await this.prisma.role.findUnique({

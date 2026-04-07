@@ -10,6 +10,7 @@ import { UserModule } from '../users/user.module';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { AuthController } from './auth.controller';
 import { RedisModule } from '../redis/redis.module';
+import { RoleModule } from '../roles/role.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RedisModule } from '../redis/redis.module';
       signOptions: { expiresIn: '15m' },
     }),
     UserModule, // ← import UserModule để dùng UserRepository
+    RoleModule, // ← import RoleModule để dùng RoleRepository
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

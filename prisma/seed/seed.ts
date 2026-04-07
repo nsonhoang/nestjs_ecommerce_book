@@ -24,6 +24,13 @@ async function main() {
     adminRole = await prisma.role.create({
       data: { name: 'ADMIN' },
     });
+    await prisma.role.create({
+      data: { name: 'USER' },
+    });
+    await prisma.role.create({
+      data: { name: 'STAFF' },
+    });
+    console.log('Admin, User, and Staff roles created');
   }
 
   const hash = await bcrypt.hash(adminPassword, 10);

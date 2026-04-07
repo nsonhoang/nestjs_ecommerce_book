@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   Logger,
@@ -17,8 +18,13 @@ import * as crypto from 'crypto';
 import { JwtPayload, JwtUser } from 'src/strategies/jwt-payload.interface';
 import { REDIS } from '../redis/redis.module';
 import type Redis from 'ioredis';
+import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
+import { UserResponseDto } from '../users/dto/user.response..dto';
+import { AuthRole } from '../roles/roles.enum';
+import { RoleRepository } from '../roles/role.repository';
 
 const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
+const SULT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
@@ -27,6 +33,7 @@ export class AuthService {
     @Inject(REDIS) private readonly redis: Redis,
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
+    private readonly roleRepository: RoleRepository,
   ) {}
 
   //xử lý global exception
@@ -163,8 +170,44 @@ export class AuthService {
     }
   }
 
-  register() {
-    return 'đăng ký thành công';
+  async register(
+    userRegisterDto: AuthRegisterRequestDto,
+  ): Promise<UserResponseDto> {
+    try {
+      const existingUser = await this.userRepository.findByEmail(
+        userRegisterDto.email,
+      );
+      if (existingUser) {
+        throw new BadRequestException('Email đã được sử dụng');
+      }
+
+      const role = await this.roleRepository.findByName(AuthRole.USER);
+      if (!role) {
+        this.logger.error(`Role ${AuthRole.USER} not found in database`);
+        throw new NotFoundException(`Role ${AuthRole.USER} not found`);
+      }
+
+      //băm mật khẩu trước khi lưu vào database
+      const hashedPassword = await bcrypt.hash(
+        userRegisterDto.password,
+        SULT_ROUNDS,
+      );
+      const userCreateInput = {
+        email: userRegisterDto.email,
+        password: hashedPassword,
+        name: userRegisterDto.name,
+        phone: userRegisterDto.phone,
+        role: { id: role?.id, name: role?.name },
+      };
+
+      return this.userRepository.createUser(userCreateInput);
+    } catch (error) {
+      this.logger.error('Failed to register user', error);
+      throw new BadRequestException(
+        'Đăng ký thất bại: ' +
+          (error instanceof Error ? error.message : 'Lỗi không xác định'),
+      );
+    }
   }
 
   async logout(accessToken: string): Promise<string> {

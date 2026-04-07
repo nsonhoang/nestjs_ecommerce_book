@@ -17,6 +17,8 @@ import { AuthService } from './auth.service';
 import { AuthResponse } from './auth.interface';
 import { AuthRequestDto } from './dto/auth.request.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
+import { UserResponseDto } from '../users/dto/user.response..dto';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -35,9 +37,11 @@ export class AuthController {
   //Đăng kí tài khoản mới, có thể thêm các trường như name, phone,... vào AuthRequestDto nếu cần
   @Post('/register')
   @HttpCode(HttpStatus.OK)
-  register(): string {
-    const result = this.authService.register();
-    return result;
+  async register(
+    @Body() data: AuthRegisterRequestDto,
+  ): Promise<ApiResponse<UserResponseDto>> {
+    const result = await this.authService.register(data);
+    return ApiResponse.ok(result, 'Đăng ký thành công', HttpStatus.OK);
   }
 
   @Post('/refresh-token')
@@ -59,6 +63,7 @@ export class AuthController {
     const result = await this.authService.refreshToken(refreshToken, res);
     return ApiResponse.ok(result, 'Refresh token thành công', HttpStatus.OK);
   }
+
   @Post('/logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)

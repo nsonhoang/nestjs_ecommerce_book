@@ -1,6 +1,9 @@
-import { OmitType } from '@nestjs/mapped-types';
-import { UserRequestDto } from './user.request.dto';
-
-export class UserResponseDto extends OmitType(UserRequestDto, [
-  'password',
-] as const) {}
+export class UserResponseDto {
+  id!: string;
+  email!: string;
+  name!: string | null;
+  phone!: string | null;
+  createdAt!: Date;
+  updatedAt!: Date;
+  role!: { id: string; name: string } | null;
+}
