@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-
-import { User } from './user.interface';
 import { UserResponseDto } from './dto/user.response..dto';
-import { AuthRole } from '../roles/roles.enum';
+import { getPagination, buildMeta } from 'src/utils/pagination.util';
+import { UserQueryDto } from './dto/user-query.dto';
+import { User } from './user.interface';
+import { UserUpdateRequestDto } from './dto/user-update.requset.dto';
 
 @Injectable()
 export class UserRepository {
@@ -30,6 +31,49 @@ export class UserRepository {
         role: { select: { id: true, name: true } },
       },
     });
+  }
+  async getUsers(query: UserQueryDto) {
+    const { page, limit, keyword, sortBy, sortOrder } = query;
+    const { skip, take } = getPagination(page, limit);
+
+    const where = keyword
+      ? {
+          OR: [
+            { email: { contains: keyword } },
+            { name: { contains: keyword } },
+          ],
+        }
+      : {};
+
+    const orderBy = {
+      [sortBy]: sortOrder,
+    } as Record<string, 'asc' | 'desc'>;
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take,
+        orderBy,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+          role: { select: { id: true, name: true } },
+        },
+      }),
+      this.prisma.user.count({
+        where,
+      }),
+    ]);
+
+    return {
+      data,
+      meta: buildMeta(page, limit, total),
+    };
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -68,5 +112,28 @@ export class UserRepository {
     });
 
     return user as UserResponseDto | null;
+  }
+
+  async updateUser(
+    id: string,
+    updateData: Partial<UserUpdateRequestDto>,
+  ): Promise<UserResponseDto> {
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true,
+        role: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    return updatedUser as UserResponseDto;
   }
 }
