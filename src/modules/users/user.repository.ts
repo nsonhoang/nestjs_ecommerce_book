@@ -1,25 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserResponseDto } from './dto/user.response..dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import { getPagination, buildMeta } from 'src/utils/pagination.util';
 import { UserQueryDto } from './dto/user-query.dto';
 import { User } from './user.interface';
-import { UserUpdateRequestDto } from './dto/user-update.requset.dto';
+import { UserUpdateRequestDto } from './dto/user-update.request.dto';
+
+type CreateUserInput = {
+  email: string;
+  password: string;
+  name: string;
+  phone?: string;
+  roleId: string;
+};
 
 @Injectable()
 export class UserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createUser(
-    input: Omit<User, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<UserResponseDto> {
+  async createUser(input: CreateUserInput): Promise<UserResponseDto> {
     return this.prisma.user.create({
       data: {
         email: input.email,
         password: input.password,
         name: input.name,
-        phone: input.phone, // không dùng ?:
-        roleId: input.role.id,
+        phone: input.phone,
+        roleId: input.roleId,
       },
       select: {
         id: true,

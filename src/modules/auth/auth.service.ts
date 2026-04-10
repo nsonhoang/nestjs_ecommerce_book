@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UserRepository } from '../users/user.repository';
+
 import { AuthRequestDto } from './dto/auth.request.dto';
 
 import * as bcrypt from 'bcrypt';
@@ -19,19 +19,19 @@ import { JwtPayload, JwtUser } from 'src/strategies/jwt-payload.interface';
 import { REDIS } from '../redis/redis.module';
 import type Redis from 'ioredis';
 import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
-import { UserResponseDto } from '../users/dto/user.response..dto';
+import { UserResponseDto } from '../users/dto/user-response.dto';
 import { AuthRole } from '../roles/roles.enum';
 import { RoleRepository } from '../roles/role.repository';
+import { UserService } from '../users/user.service';
 
 const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
-const SULT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   constructor(
     @Inject(REDIS) private readonly redis: Redis,
-    private readonly userRepository: UserRepository,
+    private readonly userService: UserService, //có thể chuyển thành userService nếu muốn, nhưng do chỉ cần dùng đến hàm findByEmail và createUser nên sẽ không cần thiết phải gọi cả service lên
     private readonly jwtService: JwtService,
     private readonly roleRepository: RoleRepository,
   ) {}
@@ -104,7 +104,7 @@ export class AuthService {
   }
 
   private async validate(authRequest: AuthRequestDto): Promise<User> {
-    const user = await this.userRepository.findByEmail(authRequest.email);
+    const user = await this.userService.getUserByEmail(authRequest.email);
 
     if (!user) {
       throw new NotFoundException(
@@ -174,7 +174,7 @@ export class AuthService {
     userRegisterDto: AuthRegisterRequestDto,
   ): Promise<UserResponseDto> {
     try {
-      const existingUser = await this.userRepository.findByEmail(
+      const existingUser = await this.userService.getUserByEmail(
         userRegisterDto.email,
       );
       if (existingUser) {
@@ -187,20 +187,13 @@ export class AuthService {
         throw new NotFoundException(`Role ${AuthRole.USER} not found`);
       }
 
-      //băm mật khẩu trước khi lưu vào database
-      const hashedPassword = await bcrypt.hash(
-        userRegisterDto.password,
-        SULT_ROUNDS,
-      );
-      const userCreateInput = {
+      return this.userService.createUser({
         email: userRegisterDto.email,
-        password: hashedPassword,
+        password: userRegisterDto.password,
         name: userRegisterDto.name,
         phone: userRegisterDto.phone,
-        role: { id: role?.id, name: role?.name },
-      };
-
-      return this.userRepository.createUser(userCreateInput);
+        roleId: role.id,
+      });
     } catch (error) {
       this.logger.error('Failed to register user', error);
       throw new BadRequestException(

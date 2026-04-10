@@ -24,8 +24,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  roleId    String?
-  role      Role?    @relation(fields: [roleId], references: [id])
+  roleId    String
+  role      Role    @relation(fields: [roleId], references: [id])
+  @@index([roleId]) 
 }
 
 model Role {
@@ -35,12 +36,73 @@ model Role {
   users User[]
 }
 
+model Category {
+  id    String @id @default(uuid())
+  name  String @unique
+
+  books BookCategory[]
+}
+
 model Book {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  price       Float
-  stock       Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  title         String //tên quyển sách
+  description   String?  @db.Text
+  thumbnail     String
+
+  price         Decimal  @db.Decimal(10, 2)
+
+
+
+
+  categories BookCategory[]
+
+  // Quan hệ khác giữ nguyên
+  images        BookImage[]
+  // inventory     Inventory?
+  // banners       Banner[]
+  authors       BookAuthor[]
+  // reviews       Review[]
+  // cartItems     CartItem[]
+  // orderItems    OrderItem[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+model BookCategory {
+  bookId     String
+  categoryId String
+
+  book       Book     @relation(fields: [bookId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([bookId, categoryId]) // khóa chính kép
+  @@index([categoryId])
+
+}
+model BookImage {
+  id      String @id @default(uuid())
+  url     String
+  bookId  String
+  book    Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+}
+model Author {
+  id    String @id @default(uuid())
+  name  String 
+  dateOfBirth DateTime?
+  info String? @db.Text
+  nationality String?
+
+  books BookAuthor[]
+  @@index([name])
+}
+
+model BookAuthor {
+  bookId   String
+  authorId String
+
+  book   Book   @relation(fields: [bookId], references: [id])
+  author Author @relation(fields: [authorId], references: [id])
+
+  @@id([bookId, authorId])
+  @@index([authorId])
 }

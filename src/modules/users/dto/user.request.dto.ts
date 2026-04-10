@@ -30,4 +30,8 @@ export class UserRequestDto {
     message: 'Phone phải là số từ 9-11 chữ số',
   })
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  roleId?: string;
 }

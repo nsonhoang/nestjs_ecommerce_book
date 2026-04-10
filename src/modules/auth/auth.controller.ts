@@ -18,7 +18,7 @@ import { AuthResponse } from './auth.interface';
 import { AuthRequestDto } from './dto/auth.request.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
-import { UserResponseDto } from '../users/dto/user.response..dto';
+import { UserResponseDto } from '../users/dto/user-response.dto';
 
 @Controller('/v1/auth')
 export class AuthController {

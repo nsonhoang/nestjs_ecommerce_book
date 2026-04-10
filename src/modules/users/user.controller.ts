@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   Patch,
-  Post,
   Query,
   Req,
   UseGuards,
@@ -16,14 +15,13 @@ import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { type JwtUser } from 'src/strategies/jwt-payload.interface';
 
 import { ApiResponse } from 'src/common/api-response';
-import { UserResponseDto } from './dto/user.response..dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from '../roles/roles.enum';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { UserQueryDto } from './dto/user-query.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
-import { User } from 'generated/prisma/browser';
-import { UserUpdateRequestDto } from './dto/user-update.requset.dto';
+import { UserUpdateRequestDto } from './dto/user-update.request.dto';
 
 export type RequestWithUser = Request & { user: JwtUser };
 

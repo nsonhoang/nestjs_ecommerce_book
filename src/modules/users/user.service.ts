@@ -7,26 +7,38 @@ import {
 
 import { UserRepository } from './user.repository';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
-import { UserResponseDto } from './dto/user.response..dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import { UserQueryDto } from './dto/user-query.dto';
-
+import * as bcrypt from 'bcrypt';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
-import { UserUpdateRequestDto } from './dto/user-update.requset.dto';
-import { RoleRepository } from '../roles/role.repository';
+import { UserUpdateRequestDto } from './dto/user-update.request.dto';
+import { User } from './user.interface';
+import { AuthRegisterRequestDto } from '../auth/dto/auth-register.request.dto';
+import { UserRequestDto } from './dto/user.request.dto';
+
+const SULT_ROUNDS = 10;
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
-  constructor(
-    private readonly userRepository: UserRepository,
-    private readonly roleRepository: RoleRepository,
-  ) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   //xử lý global exception
   // format response
   //validate role name kh đc trùng
   getHello(): string {
     return 'Hello User!';
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    //.hàm này sẽ dùng trong authService để check email khi đăng nhập hoặc đăng ký, nên sẽ trả về User thay vì UserResponseDto để có thể lấy được password để so sánh
+    try {
+      const user = await this.userRepository.findByEmail(email);
+      return user;
+    } catch (error) {
+      this.logger.error(`Failed to fetch user with email ${email}`, error);
+      throw new NotFoundException('Lỗi khi lấy thông tin người dùng');
+    }
   }
 
   async getProfile(payload: JwtUser): Promise<UserResponseDto> {
@@ -96,6 +108,21 @@ export class UserService {
       throw new BadRequestException('Lỗi khi cập nhật thông tin người dùng');
     }
   }
+  async createUser(userRequest: UserRequestDto): Promise<UserResponseDto> {
+    const hashedPassword = await bcrypt.hash(userRequest.password, SULT_ROUNDS);
 
+    if (!userRequest.roleId) {
+      throw new BadRequestException('RoleId là bắt buộc');
+    }
+    const userCreateInput = {
+      email: userRequest.email,
+      password: hashedPassword,
+      name: userRequest.name,
+      phone: userRequest.phone,
+      roleId: userRequest.roleId,
+    };
+
+    return this.userRepository.createUser(userCreateInput);
+  }
   //hàm updateUser này dành cho User và sẽ cập nhật sau
 }
