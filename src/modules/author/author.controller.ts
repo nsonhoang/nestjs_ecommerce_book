@@ -1,7 +1,18 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 
 import { ApiResponse } from 'src/common/api-response';
 import { AuthorService } from './author.service';
+import { AuthorRequestDto } from './dto/author.request.dto';
+import { AuthorResponseDto } from './dto/author.response.dto';
+import { AuthorUpdateRequestDto } from './dto/author-update.request.dto';
 
 @Controller('/v1/authors')
 export class AuthorController {
@@ -17,5 +28,28 @@ export class AuthorController {
   async getAuthorById(@Param('id') id: string) {
     const author = await this.authorService.getAuthorById(id);
     return ApiResponse.ok(author, 'Lấy thông tin tác giả thành công');
+  }
+
+  @Post('')
+  async createAuthor(
+    @Body() authorDto: AuthorRequestDto,
+  ): Promise<ApiResponse<AuthorResponseDto>> {
+    const author = await this.authorService.createAuthor(authorDto);
+    return ApiResponse.ok(author, 'Tạo tác giả thành công');
+  }
+
+  @Delete(':id')
+  async deleteAuthor(@Param('id') id: string): Promise<ApiResponse<unknown>> {
+    await this.authorService.deleteAuthor(id);
+    return ApiResponse.message('Xóa tác giả thành công');
+  }
+
+  @Patch(':id')
+  async updateAuthor(
+    @Param('id') id: string,
+    @Body() authorDto: AuthorUpdateRequestDto,
+  ): Promise<ApiResponse<AuthorResponseDto>> {
+    const author = await this.authorService.updateAuthor(id, authorDto);
+    return ApiResponse.ok(author, 'Cập nhật thông tin tác giả thành công');
   }
 }

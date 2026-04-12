@@ -1,4 +1,5 @@
 import {
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
@@ -11,6 +12,7 @@ export class UserUpdateRequestDto {
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @IsNotEmpty({ message: 'Tên không được để trống' })
   name!: string;
 
   @IsOptional()

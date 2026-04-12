@@ -56,13 +56,23 @@ export class CategoryRepository {
     });
   }
   async delete(id: string): Promise<boolean> {
-    const deletedCategory = this.prisma.category.delete({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
-    return deletedCategory.then(() => true).catch(() => false);
+    return this.prisma
+      .$transaction(async (prisma) => {
+        // Xóa các liên kết với sách trong bảng trung gian
+        await prisma.bookCategory.deleteMany({
+          where: { categoryId: id },
+        });
+        // Xóa danh mục
+        await prisma.category.delete({
+          where: { id },
+        });
+      })
+      .then(() => {
+        return true;
+      });
+    // .catch((error) => {
+    //   console.error('Error deleting category:', error);
+    //   return false;
+    // });
   }
 }

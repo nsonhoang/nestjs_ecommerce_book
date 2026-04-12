@@ -1,7 +1,8 @@
 import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsOptional } from 'class-validator';
 
-export class AuthorRequestDto {
+export class AuthorUpdateRequestDto {
+  @IsOptional()
   @IsNotEmpty()
   name!: string;
 

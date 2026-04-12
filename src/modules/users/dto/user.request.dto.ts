@@ -17,11 +17,13 @@ export class UserRequestDto {
   @IsString()
   @MinLength(6)
   @MaxLength(50)
+  // @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
   password!: string;
 
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @IsNotEmpty({ message: 'Tên không được để trống' })
   name!: string;
 
   @IsOptional()

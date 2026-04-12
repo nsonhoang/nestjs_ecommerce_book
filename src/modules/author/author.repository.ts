@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthorResponseDto } from './dto/author.response.dto';
+import { AuthorRequestDto } from './dto/author.request.dto';
 
 @Injectable()
 export class AuthorRepository {
@@ -42,6 +43,32 @@ export class AuthorRepository {
           },
         },
       },
+    });
+  }
+  async createAuthor(author: AuthorRequestDto): Promise<AuthorResponseDto> {
+    return this.prisma.author.create({
+      data: author,
+    });
+  }
+  async deleteAuthor(id: string): Promise<void> {
+    return await this.prisma.$transaction(async (prisma) => {
+      // Xóa các liên kết với sách trong bảng trung gian
+      await prisma.bookAuthor.deleteMany({
+        where: { authorId: id },
+      });
+      // Xóa tác giả
+      await prisma.author.delete({
+        where: { id },
+      });
+    });
+  }
+  async updateAuthor(
+    id: string,
+    authorDto: AuthorRequestDto,
+  ): Promise<AuthorResponseDto> {
+    return this.prisma.author.update({
+      where: { id },
+      data: authorDto,
     });
   }
 }

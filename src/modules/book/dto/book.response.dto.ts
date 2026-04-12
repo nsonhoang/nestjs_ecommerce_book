@@ -5,7 +5,6 @@ export class BookResponseDto {
   id!: string;
   title!: string;
   description!: string | null;
-
   price!: string;
   thumbnail!: string;
   categories?: CategoryResponseDto[];

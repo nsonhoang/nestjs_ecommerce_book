@@ -9,7 +9,6 @@ import {
 
 import { CategoryRepository } from './category.repository';
 import { CategoryRequestDto } from './dto/categories.request.dto';
-import { Category } from 'generated/prisma/browser';
 import { CategoryResponseDto } from './dto/categories.response.dto';
 
 @Injectable()
@@ -79,9 +78,18 @@ export class CategoryService {
   async deleteCategory(id: string): Promise<void> {
     try {
       //phải tìm kiếm sách theo danh mục này trước, nếu có thì sẽ không cho xóa
+      const category = await this.getCategoryById(id);
+      if (!category) {
+        throw new NotFoundException('Danh mục không tồn tại');
+      }
+
       await this.categoryRepository.delete(id);
     } catch (error) {
       this.logger.error('Lỗi khi xóa danh mục', error);
     }
+  }
+  async findById(id: string): Promise<CategoryResponseDto | null> {
+    const category = await this.categoryRepository.findById(id);
+    return category;
   }
 }

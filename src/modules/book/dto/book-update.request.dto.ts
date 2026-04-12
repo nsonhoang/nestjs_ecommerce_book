@@ -5,43 +5,38 @@ import {
   IsArray,
   IsOptional,
   Min,
-  ArrayNotEmpty,
 } from 'class-validator';
 
-export class BookRequestDto {
+export class BookUpdateRequestDto {
   @IsString()
+  @IsOptional() // Cho phép null hoặc undefined nếu bạn muốn
   @IsNotEmpty({ message: 'Tiêu đề không được để trống' })
   title!: string;
 
-  @IsString()
   @IsOptional() // Cho phép null hoặc undefined nếu bạn muốn
-  description!: string | null;
+  @IsString()
+  //   @IsNullable()
+  description?: string | null;
 
   @IsNumber()
+  @IsOptional()
   @Min(0, { message: 'Giá tiền không được nhỏ hơn 0' })
   price!: number;
 
   @IsString()
   @IsNotEmpty()
+  @IsOptional()
   thumbnail!: string;
 
   @IsArray({ message: 'categoryId phải là một mảng' })
-  @ArrayNotEmpty({ message: 'Sách phải thuộc ít nhất một thể loại' })
+  //   @ArrayNotEmpty({ message: 'Sách phải thuộc ít nhất một thể loại' })
+  @IsOptional()
   @IsString({ each: true, message: 'Mỗi categoryId phải là một chuỗi' })
   categoryId!: string[];
 
   @IsArray({ message: 'authorId phải là một mảng' })
-  @ArrayNotEmpty({ message: 'Sách phải có ít nhất một tác giả' })
+  //   @ArrayNotEmpty({ message: 'Sách phải có ít nhất một tác giả' })
+  @IsOptional()
   @IsString({ each: true, message: 'Mỗi authorId phải là một chuỗi' })
   authorId!: string[];
 }
-
-// export class BookCategoryRequestDto {
-//   categoryId!: string;
-//   bookId!: string;
-// }
-
-// export class BookAuthorRequestDto {
-//   authorId!: string;
-//   bookId!: string;
-// }
