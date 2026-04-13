@@ -11,9 +11,10 @@ import { CategoryService } from '../categories/category.service';
 import { AuthorService } from '../author/author.service';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 import { BookResponseDto } from './dto/book.response.dto';
-import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateBookDto } from './dto/paginate-book.dto';
+import { MediaService, UploadFile } from 'src/media/media.service';
+import { ImagePosition } from 'src/common/Enum/image-position.enum';
 
 @Injectable()
 export class BookService {
@@ -22,6 +23,7 @@ export class BookService {
     private readonly bookRepository: BookRepository,
     private readonly categoryService: CategoryService,
     private readonly authorService: AuthorService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async getBooks(
@@ -42,31 +44,44 @@ export class BookService {
     }
     return book;
   }
-  async createBook(request: BookRequestDto) {
+
+  async createBook(request: BookRequestDto, file: UploadFile) {
     try {
+      const uploadedImage = await this.mediaService.uploadFile(
+        ImagePosition.THUMBNAIL,
+        file,
+      );
+
+      const bookData = {
+        ...request,
+        thumbnail: uploadedImage.secure_url as string,
+      };
+
       await Promise.all(
         request.categoryId.map(async (id) => {
-          const category = await this.categoryService.findById(id); //thêm ở service danh mục
+          const category = await this.categoryService.findById(id);
           if (!category) {
             throw new NotFoundException(`Danh mục với id ${id} không tồn tại`);
           }
         }),
       );
+
       await Promise.all(
         request.authorId.map(async (id) => {
-          const author = await this.authorService.getAuthorById(id); // thêm ở service tác giả
+          const author = await this.authorService.getAuthorById(id);
           if (!author) {
             throw new NotFoundException(`Tác giả với id ${id} không tồn tại`);
           }
         }),
       );
 
-      return this.bookRepository.createBook(request);
+      return this.bookRepository.createBook(bookData);
     } catch (error) {
       this.logger.error('Error occurred while creating book', error);
-      throw new BadRequestException('Không thể thêm sách'); // Trả về lỗi chung cho client
+      throw new BadRequestException('Không thể thêm sách');
     }
   }
+
   async deleteBook(id: string) {
     //phải kiểm tra các bảng trung gian xem sách có liên quan đến tác giả hay danh mục nào không, nếu có thì không được xóa
     try {
@@ -80,6 +95,7 @@ export class BookService {
       throw new BadRequestException('Không thể xóa sách'); // Trả về lỗi chung cho client
     }
   }
+
   async updateBook(
     id: string,
     request: BookUpdateRequestDto,

@@ -2,11 +2,16 @@ import {
   Body,
   Controller,
   Delete,
+  FileTypeValidator,
   Get,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { ApiResponse } from 'src/common/api-response';
@@ -16,6 +21,7 @@ import { BookResponseDto } from './dto/book.response.dto';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateBookDto } from './dto/paginate-book.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('/v1/books')
 export class BookController {
@@ -36,10 +42,20 @@ export class BookController {
   }
 
   @Post('')
+  @UseInterceptors(FileInterceptor('file'))
   async createBook(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+      }),
+    )
+    file: any,
     @Body() bookDto: BookRequestDto,
   ): Promise<ApiResponse<BookResponseDto>> {
-    const book = await this.bookService.createBook(bookDto);
+    const book = await this.bookService.createBook(bookDto, file);
     return ApiResponse.ok(book, 'Tạo sách thành công');
   }
 

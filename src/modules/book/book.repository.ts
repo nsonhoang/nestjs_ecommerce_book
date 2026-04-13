@@ -26,14 +26,10 @@ export class BookRepository {
         take,
       } = getPagination(page, limit);
 
-      // Dùng record hoặc any để có thể push vào mảng AND
-      const matching: Prisma.BookWhereInput = {
-        AND: [],
-      };
+      const andConditions: Prisma.BookWhereInput[] = [];
 
       if (keyword) {
-        // 2. Ép kiểu nhẹ hoặc kiểm tra để TypeScript biết AND là một mảng
-        (matching.AND as Prisma.BookWhereInput[]).push({
+        andConditions.push({
           OR: [
             { title: { contains: keyword } },
             {
@@ -50,7 +46,7 @@ export class BookRepository {
       }
 
       if (query.categoryId) {
-        (matching.AND as Prisma.BookWhereInput[]).push({
+        andConditions.push({
           categories: {
             some: {
               categoryId: query.categoryId,
@@ -60,7 +56,7 @@ export class BookRepository {
       }
 
       if (query.authorId) {
-        (matching.AND as Prisma.BookWhereInput[]).push({
+        andConditions.push({
           authors: {
             some: {
               authorId: query.authorId,
@@ -68,6 +64,9 @@ export class BookRepository {
           },
         });
       }
+
+      const matching: Prisma.BookWhereInput =
+        andConditions.length > 0 ? { AND: andConditions } : {};
 
       const allowedSortBy = [
         'createdAt',
@@ -139,57 +138,56 @@ export class BookRepository {
     const categoryIds = data.categoryId ?? [];
     const authorIds = data.authorId ?? [];
 
-    return this.prisma.$transaction(async (prisma) => {
-      const book = await prisma.book.create({
-        data: {
-          title: data.title,
-          description: data.description,
-          price: data.price,
-          thumbnail: data.thumbnail,
-          categories: categoryIds.length
-            ? {
-                create: categoryIds.map((id) => ({
-                  category: { connect: { id } },
-                })),
-              }
-            : undefined,
-          authors: authorIds.length
-            ? {
-                create: authorIds.map((id) => ({
-                  author: { connect: { id } },
-                })),
-              }
-            : undefined,
-        },
-        include: {
-          categories: {
-            include: {
-              category: true,
-            },
-          },
-          authors: {
-            include: {
-              author: true,
-            },
+    const book = await this.prisma.book.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        thumbnail: data.thumbnail ?? '',
+        categories: categoryIds.length
+          ? {
+              create: categoryIds.map((id) => ({
+                category: { connect: { id } },
+              })),
+            }
+          : undefined,
+        authors: authorIds.length
+          ? {
+              create: authorIds.map((id) => ({
+                author: { connect: { id } },
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        categories: {
+          include: {
+            category: true,
           },
         },
-      });
-      return {
-        ...book,
-        price: book.price.toString(),
-        authors: book.authors.map((item) => ({
-          id: item.author.id,
-          name: item.author.name,
-          dateOfBirth: item.author.dateOfBirth,
-          info: item.author.info,
-          nationality: item.author.nationality,
-        })),
-        categories: book.categories.map((item) => ({
-          id: item.category.id,
-          name: item.category.name,
-        })),
-      };
+        authors: {
+          include: {
+            author: true,
+          },
+        },
+      },
     });
+
+    return {
+      ...book,
+      price: book.price.toString(),
+      authors: book.authors.map((item) => ({
+        id: item.author.id,
+        name: item.author.name,
+        dateOfBirth: item.author.dateOfBirth,
+        info: item.author.info,
+        nationality: item.author.nationality,
+      })),
+      categories: book.categories.map((item) => ({
+        id: item.category.id,
+        name: item.category.name,
+      })),
+    };
   }
 
   async updateBook(

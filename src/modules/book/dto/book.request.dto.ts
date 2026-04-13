@@ -7,6 +7,31 @@ import {
   Min,
   ArrayNotEmpty,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
+
+function parseStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item));
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item));
+      }
+    } catch {
+      // Fallback for comma-separated values.
+    }
+
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
 
 export class BookRequestDto {
   @IsString()
@@ -17,19 +42,27 @@ export class BookRequestDto {
   @IsOptional() // Cho phép null hoặc undefined nếu bạn muốn
   description!: string | null;
 
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? Number(value) : value,
+  )
   @IsNumber()
   @Min(0, { message: 'Giá tiền không được nhỏ hơn 0' })
   price!: number;
 
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || undefined : value,
+  )
   @IsString()
-  @IsNotEmpty()
-  thumbnail!: string;
+  @IsOptional() // thumbnail sẽ được set từ upload file
+  thumbnail?: string;
 
+  @Transform(({ value }: { value: unknown }) => parseStringArray(value))
   @IsArray({ message: 'categoryId phải là một mảng' })
   @ArrayNotEmpty({ message: 'Sách phải thuộc ít nhất một thể loại' })
   @IsString({ each: true, message: 'Mỗi categoryId phải là một chuỗi' })
   categoryId!: string[];
 
+  @Transform(({ value }: { value: unknown }) => parseStringArray(value))
   @IsArray({ message: 'authorId phải là một mảng' })
   @ArrayNotEmpty({ message: 'Sách phải có ít nhất một tác giả' })
   @IsString({ each: true, message: 'Mỗi authorId phải là một chuỗi' })

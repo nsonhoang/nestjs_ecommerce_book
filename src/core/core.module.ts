@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { MediaModule } from 'src/media/media.module';
 
 import { PrismaModule } from 'src/modules/prisma/prisma.module';
 
@@ -10,7 +11,8 @@ import { PrismaModule } from 'src/modules/prisma/prisma.module';
       envFilePath: '.env',
     }),
     PrismaModule,
+    MediaModule,
   ],
-  exports: [ConfigModule, PrismaModule],
+  exports: [ConfigModule, PrismaModule, MediaModule],
 })
 export class CoreModule {}

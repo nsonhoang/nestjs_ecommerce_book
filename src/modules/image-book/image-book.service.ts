@@ -16,4 +16,6 @@ export class ImageBookService {
     void this.imageBookRepository;
     return Promise.resolve([]);
   }
+
+  asy;
 }
