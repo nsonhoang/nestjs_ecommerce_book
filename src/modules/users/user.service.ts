@@ -13,7 +13,6 @@ import * as bcrypt from 'bcrypt';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { UserUpdateRequestDto } from './dto/user-update.request.dto';
 import { User } from './user.interface';
-import { AuthRegisterRequestDto } from '../auth/dto/auth-register.request.dto';
 import { UserRequestDto } from './dto/user.request.dto';
 
 const SULT_ROUNDS = 10;

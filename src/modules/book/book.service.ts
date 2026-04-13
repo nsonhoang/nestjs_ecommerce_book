@@ -11,6 +11,9 @@ import { CategoryService } from '../categories/category.service';
 import { AuthorService } from '../author/author.service';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 import { BookResponseDto } from './dto/book.response.dto';
+import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { PaginateBookDto } from './dto/paginate-book.dto';
 
 @Injectable()
 export class BookService {
@@ -21,8 +24,15 @@ export class BookService {
     private readonly authorService: AuthorService,
   ) {}
 
-  async getBooks() {
-    return this.bookRepository.getBooks();
+  async getBooks(
+    query: PaginateBookDto,
+  ): Promise<PaginatedResult<BookResponseDto>> {
+    try {
+      return this.bookRepository.getBooks(query);
+    } catch (error) {
+      this.logger.error('Error occurred while fetching books', error);
+      throw new BadRequestException('Không thể lấy danh sách sách');
+    }
   }
 
   async getBookById(id: string) {
@@ -107,24 +117,24 @@ export class BookService {
     }
   }
 
-  async getBooksByAuthorId(authorId: string) {
-    try {
-      return this.bookRepository.getBooksByAuthorId(authorId);
-    } catch (error) {
-      this.logger.error('Error occurred while fetching books by author', error);
-      throw new BadRequestException('Không thể lấy sách theo tác giả');
-    }
-  }
+  // async getBooksByAuthorId(authorId: string) {
+  //   try {
+  //     return this.bookRepository.getBooksByAuthorId(authorId);
+  //   } catch (error) {
+  //     this.logger.error('Error occurred while fetching books by author', error);
+  //     throw new BadRequestException('Không thể lấy sách theo tác giả');
+  //   }
+  // }
 
-  async getBooksByCategoryId(categoryId: string) {
-    try {
-      return this.bookRepository.getBooksByCategoryId(categoryId);
-    } catch (error) {
-      this.logger.error(
-        'Error occurred while fetching books by category',
-        error,
-      );
-      throw new BadRequestException('Không thể lấy sách theo danh mục');
-    }
-  }
+  // async getBooksByCategoryId(categoryId: string) {
+  //   try {
+  //     return this.bookRepository.getBooksByCategoryId(categoryId);
+  //   } catch (error) {
+  //     this.logger.error(
+  //       'Error occurred while fetching books by category',
+  //       error,
+  //     );
+  //     throw new BadRequestException('Không thể lấy sách theo danh mục');
+  //   }
+  // }
 }

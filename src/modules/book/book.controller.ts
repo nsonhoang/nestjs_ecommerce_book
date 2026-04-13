@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { ApiResponse } from 'src/common/api-response';
@@ -13,14 +14,18 @@ import { BookService } from './book.service';
 import { BookRequestDto } from './dto/book.request.dto';
 import { BookResponseDto } from './dto/book.response.dto';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { PaginateBookDto } from './dto/paginate-book.dto';
 
 @Controller('/v1/books')
 export class BookController {
   constructor(private readonly bookService: BookService) {}
 
   @Get('')
-  async getBooks() {
-    const books = await this.bookService.getBooks();
+  async getBooks(
+    @Query() paginationQuery: PaginateBookDto,
+  ): Promise<ApiResponse<PaginatedResult<BookResponseDto>>> {
+    const books = await this.bookService.getBooks(paginationQuery);
     return ApiResponse.ok(books, 'Lấy danh sách sách thành công');
   }
 

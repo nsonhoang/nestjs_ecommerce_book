@@ -91,8 +91,8 @@ model Author {
   dateOfBirth DateTime?
   info String? @db.Text
   nationality String?
-//   createdAt DateTime @default(now())
-// updatedAt DateTime @updatedAt
+  // createdAt DateTime @default(now())
+  // updatedAt DateTime @updatedAt
 
   books BookAuthor[]
   @@index([name])

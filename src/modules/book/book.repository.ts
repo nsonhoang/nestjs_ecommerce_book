@@ -5,26 +5,114 @@ import { BookRequestDto } from './dto/book.request.dto';
 import { BookResponseDto } from './dto/book.response.dto';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 
+import { buildMeta, getPagination } from 'src/utils/pagination.util';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { Prisma } from 'generated/prisma/client';
+import { PaginateBookDto } from './dto/paginate-book.dto';
+
 @Injectable()
 export class BookRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getBooks(): Promise<BookResponseDto[]> {
-    const books = await this.prisma.book.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        images: true,
-        categories: { include: { category: true } },
-        authors: { include: { author: true } },
-      },
-    });
+  async getBooks(
+    query: PaginateBookDto,
+  ): Promise<PaginatedResult<BookResponseDto>> {
+    try {
+      const { page, limit, keyword, sortBy, sortOrder } = query;
+      const {
+        page: safePage,
+        limit: safeLimit,
+        skip,
+        take,
+      } = getPagination(page, limit);
 
-    return books.map((b) => ({
-      ...b,
-      categories: b.categories.map((bc) => bc.category),
-      authors: b.authors.map((item) => item.author),
-      price: b.price.toString(), // Decimal -> string
-    }));
+      // Dùng record hoặc any để có thể push vào mảng AND
+      const matching: Prisma.BookWhereInput = {
+        AND: [],
+      };
+
+      if (keyword) {
+        // 2. Ép kiểu nhẹ hoặc kiểm tra để TypeScript biết AND là một mảng
+        (matching.AND as Prisma.BookWhereInput[]).push({
+          OR: [
+            { title: { contains: keyword } },
+            {
+              authors: {
+                some: {
+                  author: {
+                    name: { contains: keyword },
+                  },
+                },
+              },
+            },
+          ],
+        });
+      }
+
+      if (query.categoryId) {
+        (matching.AND as Prisma.BookWhereInput[]).push({
+          categories: {
+            some: {
+              categoryId: query.categoryId,
+            },
+          },
+        });
+      }
+
+      if (query.authorId) {
+        (matching.AND as Prisma.BookWhereInput[]).push({
+          authors: {
+            some: {
+              authorId: query.authorId,
+            },
+          },
+        });
+      }
+
+      const allowedSortBy = [
+        'createdAt',
+        'updatedAt',
+        'title',
+        'price',
+      ] as const;
+      const safeSortBy = allowedSortBy.includes(
+        sortBy as (typeof allowedSortBy)[number],
+      )
+        ? sortBy
+        : 'createdAt';
+
+      const orderBy = {
+        [safeSortBy]: sortOrder,
+      } as Record<string, 'asc' | 'desc'>;
+
+      const [data, total] = await Promise.all([
+        this.prisma.book.findMany({
+          where: matching,
+          skip,
+          take,
+          orderBy,
+          include: {
+            images: true,
+            categories: { include: { category: true } },
+            authors: { include: { author: true } },
+          },
+        }),
+        this.prisma.book.count({ where: matching }),
+      ]);
+
+      return {
+        data: data.map((b) => ({
+          ...b,
+          categories: b.categories.map((bc) => bc.category),
+          authors: b.authors.map((item) => item.author),
+          price: b.price.toString(),
+        })),
+        meta: buildMeta(safePage, safeLimit, total),
+      };
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      throw new Error('Không thể lấy danh sách sách');
+    }
   }
 
   async getBookById(id: string): Promise<BookResponseDto | null> {
