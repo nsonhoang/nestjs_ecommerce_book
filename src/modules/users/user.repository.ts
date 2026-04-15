@@ -69,6 +69,7 @@ export class UserRepository {
           createdAt: true,
           updatedAt: true,
           role: { select: { id: true, name: true } },
+          addresses: true,
         },
       }),
       this.prisma.user.count({
@@ -96,6 +97,7 @@ export class UserRepository {
         role: {
           select: { id: true, name: true }, // ← chỉ lấy id + name của role
         },
+        addresses: true,
       },
     });
 
@@ -114,6 +116,7 @@ export class UserRepository {
         role: {
           select: { id: true, name: true },
         },
+        addresses: true,
       },
     });
 
@@ -137,6 +140,7 @@ export class UserRepository {
         role: {
           select: { id: true, name: true },
         },
+        addresses: true,
       },
     });
 

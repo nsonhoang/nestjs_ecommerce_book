@@ -27,6 +27,7 @@ model User {
   roleId    String
   role      Role    @relation(fields: [roleId], references: [id])
   @@index([roleId]) 
+  addresses Address[]
 }
 
 model Role {
@@ -108,4 +109,27 @@ model BookAuthor {
 
   @@id([bookId, authorId])
   @@index([authorId])
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  userId      String
+
+  fullName    String
+  phone       String
+
+  addressLine String
+  ward        String
+  district    String
+  city        String
+  country     String   @default("Vietnam")
+
+  label       String?  // Home, Office
+
+  isDefault   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

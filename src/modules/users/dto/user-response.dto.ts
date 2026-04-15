@@ -1,3 +1,4 @@
+import { AddressResponseDTO } from 'src/modules/address/dto/address.response';
 import { RolesResponseDto } from 'src/modules/roles/dto/roles.response.dto';
 
 export class UserResponseDto {
@@ -8,4 +9,5 @@ export class UserResponseDto {
   createdAt!: Date;
   updatedAt!: Date;
   role!: RolesResponseDto;
+  addresses?: AddressResponseDTO[];
 }
