@@ -54,4 +54,22 @@ export class MediaService {
       });
     });
   }
+  async deleteMultipleFiles(publicIds: string[]): Promise<any> {
+    return new Promise((resolve, reject) => {
+      void cloudinary.api.delete_resources(publicIds, (error, result) => {
+        if (error) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+          return reject(new Error(error.message));
+        }
+        resolve(result);
+      });
+    });
+  }
+  async uploadMultipleFiles(
+    position: string,
+    files: UploadFile[],
+  ): Promise<(UploadApiResponse | UploadApiErrorResponse)[]> {
+    const uploadPromises = files.map((file) => this.uploadFile(position, file));
+    return Promise.all(uploadPromises);
+  }
 }

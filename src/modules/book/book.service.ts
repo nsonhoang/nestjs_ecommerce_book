@@ -15,6 +15,7 @@ import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateBookDto } from './dto/paginate-book.dto';
 import { MediaService, UploadFile } from 'src/media/media.service';
 import { ImagePosition } from 'src/common/Enum/image-position.enum';
+import { ImageBookService } from '../image-book/image-book.service';
 
 @Injectable()
 export class BookService {
@@ -24,6 +25,7 @@ export class BookService {
     private readonly categoryService: CategoryService,
     private readonly authorService: AuthorService,
     private readonly mediaService: MediaService,
+    private readonly imageBookService: ImageBookService,
   ) {}
 
   async getBooks(
@@ -89,6 +91,13 @@ export class BookService {
       if (!book) {
         throw new NotFoundException('Không tìm thấy sách');
       }
+
+      // Xóa ảnh liên quan đến sách trên Cloudinary và trong database
+      await this.imageBookService.deleteImagesByBookId(id);
+      console.log('Đã xóa ảnh liên quan đến sách với id:', id);
+
+      await this.imageBookService.deleteImagesByBookId(id);
+
       await this.bookRepository.deleteBook(id);
     } catch (error) {
       this.logger.error('Error occurred while deleting book', error);

@@ -7,9 +7,16 @@ import { BookRepository } from './book.repository';
 import { AuthorModule } from '../author/author.module';
 import { CategoryModule } from '../categories/category.module';
 import { MediaModule } from 'src/media/media.module';
+import { ImageBookModule } from '../image-book/image-book.module';
 
 @Module({
-  imports: [PrismaModule, AuthorModule, CategoryModule, MediaModule],
+  imports: [
+    PrismaModule,
+    AuthorModule,
+    CategoryModule,
+    MediaModule,
+    ImageBookModule,
+  ],
   controllers: [BookController],
   providers: [BookService, BookRepository],
   exports: [BookService, BookRepository],

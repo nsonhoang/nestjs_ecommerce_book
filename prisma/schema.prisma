@@ -81,6 +81,7 @@ model BookCategory {
 }
 model BookImage {
   id      String @id @default(uuid())
+  publicId  String @unique
   url     String
   bookId  String
   book    Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)

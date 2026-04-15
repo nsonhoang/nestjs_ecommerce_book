@@ -104,6 +104,7 @@ export class BookRepository {
           ...b,
           categories: b.categories.map((bc) => bc.category),
           authors: b.authors.map((item) => item.author),
+          images: b.images,
           price: b.price.toString(),
         })),
         meta: buildMeta(safePage, safeLimit, total),
@@ -130,6 +131,7 @@ export class BookRepository {
       ...book,
       categories: book.categories.map((bc) => bc.category),
       authors: book.authors.map((item) => item.author),
+      images: book.images,
       price: book.price.toString(), // Decimal -> string
     };
   }
@@ -170,6 +172,7 @@ export class BookRepository {
             author: true,
           },
         },
+        images: true,
       },
     });
 
@@ -187,6 +190,7 @@ export class BookRepository {
         id: item.category.id,
         name: item.category.name,
       })),
+      images: book.images,
     };
   }
 
@@ -262,6 +266,7 @@ export class BookRepository {
               author: true,
             },
           },
+          images: true,
         },
       });
       return {
@@ -279,6 +284,7 @@ export class BookRepository {
           id: item.category.id,
           name: item.category.name,
         })),
+        images: bookUpdate.images,
       };
     });
   }
@@ -319,6 +325,7 @@ export class BookRepository {
       categories: b.categories.map((bc) => bc.category),
       authors: b.authors.map((item) => item.author),
       price: b.price.toString(), // Decimal -> string
+      images: b.images,
     }));
   }
   async getBooksByCategoryId(categoryId: string): Promise<BookResponseDto[]> {
