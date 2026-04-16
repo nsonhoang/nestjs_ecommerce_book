@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { UpdateAddressDto } from './dto/update-address.dto';
+import { UpdateAddressDto } from './dto/update-address.request.dto';
 import { AddressResponseDTO } from './dto/address.response';
 import { AddressRequestDTO } from './dto/address.request.dto';
 import { AddressRepository } from './address.repository';

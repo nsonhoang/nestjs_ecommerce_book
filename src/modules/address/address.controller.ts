@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { AddressService } from './address.service';
 
-import { UpdateAddressDto } from './dto/update-address.dto';
+import { UpdateAddressDto } from './dto/update-address.request.dto';
 import { AddressRequestDTO } from './dto/address.request.dto';
 import { ApiResponse } from 'src/common/api-response';
 import { Address } from 'generated/prisma/browser';

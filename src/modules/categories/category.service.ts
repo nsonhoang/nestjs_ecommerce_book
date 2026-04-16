@@ -92,4 +92,8 @@ export class CategoryService {
     const category = await this.categoryRepository.findById(id);
     return category;
   }
+
+  async findManyByIds(ids: string[]) {
+    return this.categoryRepository.findByManyByIds(ids);
+  }
 }

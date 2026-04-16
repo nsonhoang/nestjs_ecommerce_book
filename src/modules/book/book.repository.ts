@@ -145,7 +145,7 @@ export class BookRepository {
         title: data.title,
         description: data.description,
         price: data.price,
-        thumbnail: data.thumbnail ?? '',
+        thumbnail: data.thumbnail ?? ' example.jpg',
         categories: categoryIds.length
           ? {
               create: categoryIds.map((id) => ({
@@ -198,95 +198,62 @@ export class BookRepository {
     id: string,
     data: BookUpdateRequestDto,
   ): Promise<BookResponseDto> {
-    const categoryIds = data.categoryId ?? [];
-    const authorIds = data.authorId ?? [];
+    // 1. Tạo object chứa các thông tin cơ bản cập nhật
+    const updateData: Prisma.BookUpdateInput = {
+      title: data.title,
+      description: data.description,
+      price: data.price,
+      thumbnail: data.thumbnail,
+    };
 
-    return this.prisma.$transaction(async (prisma) => {
-      //để ntn kh thì sẽ ràng buộc dữ liệu sách phải thuộc ít nhất 1 danh mục và có ít nhất 1 tác giả, nếu muốn cho phép sách không thuộc danh mục nào hoặc không có tác giả nào thì chỉ cần bỏ điều kiện kiểm tra mảng categoryIds và authorIds là đc
-      if (categoryIds.length > 0) {
-        await prisma.bookCategory
-          .deleteMany({
-            where: { bookId: id },
-          })
-          .then(() => {
-            // Tạo liên kết mới với danh mục
-            return prisma.bookCategory.createMany({
-              data: categoryIds.map((categoryId) => ({
-                bookId: id,
-                categoryId,
-              })),
-            });
-          });
-      }
-      if (authorIds.length > 0) {
-        await prisma.bookAuthor
-          .deleteMany({
-            where: { bookId: id },
-          })
-          .then(() => {
-            // Tạo liên kết mới với tác giả
-            return prisma.bookAuthor.createMany({
-              data: authorIds.map((authorId) => ({
-                bookId: id,
-                authorId,
-              })),
-            });
-          });
-      }
-
-      const bookUpdate = await prisma.book.update({
-        where: { id },
-        data: {
-          title: data.title,
-          description: data.description,
-          price: data.price,
-          thumbnail: data.thumbnail,
-          //để ntn thì nêu update thì khi không truyền categoryId hoặc author thì sẽ mất hết liên kết, khi thì sách sẽ kh có tác giả hoặc danh mục nào
-          // categories: {
-          //   deleteMany: { bookId: id },
-          //   create: categoryIds.map((categoryId) => ({
-          //     category: { connect: { id: categoryId } },
-          //   })),
-          // },
-          // authors: {
-          //   deleteMany: { bookId: id },
-          //   create: authorIds.map((authorId) => ({
-          //     author: { connect: { id: authorId } },
-          //   })),
-          // },
-        },
-        include: {
-          categories: {
-            include: {
-              category: true,
-            },
-          },
-          authors: {
-            include: {
-              author: true,
-            },
-          },
-          images: true,
-        },
-      });
-      return {
-        ...bookUpdate,
-
-        price: bookUpdate.price.toString(),
-        authors: bookUpdate.authors.map((item) => ({
-          id: item.author.id,
-          name: item.author.name,
-          dateOfBirth: item.author.dateOfBirth,
-          info: item.author.info,
-          nationality: item.author.nationality,
-        })),
-        categories: bookUpdate.categories.map((item) => ({
-          id: item.category.id,
-          name: item.category.name,
-        })),
-        images: bookUpdate.images,
+    // 2. CHỈ cập nhật Danh mục NẾU Frontend thực sự có gửi trường này
+    if (data.categoryId !== undefined) {
+      updateData.categories = {
+        deleteMany: { bookId: id }, // Xóa hết liên kết cũ
+        create: data.categoryId.map((categoryId) => ({
+          category: { connect: { id: categoryId } },
+        })), // Tạo lại liên kết mới (Nếu mảng rỗng thì nó chỉ xóa mà không tạo)
       };
+    }
+
+    // 3. CHỈ cập nhật Tác giả NẾU Frontend thực sự có gửi trường này
+    if (data.authorId !== undefined) {
+      updateData.authors = {
+        deleteMany: { bookId: id },
+        create: data.authorId.map((authorId) => ({
+          author: { connect: { id: authorId } },
+        })),
+      };
+    }
+
+    // 4. Gọi 1 lệnh update duy nhất (Prisma tự handle Transaction)
+    const bookUpdate = await this.prisma.book.update({
+      where: { id },
+      data: updateData,
+      include: {
+        categories: { include: { category: true } },
+        authors: { include: { author: true } },
+        images: true,
+      },
     });
+
+    // 5. Mapping dữ liệu trả về
+    return {
+      ...bookUpdate,
+      price: bookUpdate.price.toString(),
+      authors: bookUpdate.authors.map((item) => ({
+        id: item.author.id,
+        name: item.author.name,
+        dateOfBirth: item.author.dateOfBirth,
+        info: item.author.info,
+        nationality: item.author.nationality,
+      })),
+      categories: bookUpdate.categories.map((item) => ({
+        id: item.category.id,
+        name: item.category.name,
+      })),
+      images: bookUpdate.images,
+    };
   }
 
   async deleteBook(id: string) {

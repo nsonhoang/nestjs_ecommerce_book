@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -32,10 +33,12 @@ export class BookService {
     query: PaginateBookDto,
   ): Promise<PaginatedResult<BookResponseDto>> {
     try {
-      return this.bookRepository.getBooks(query);
+      return await this.bookRepository.getBooks(query);
     } catch (error) {
       this.logger.error('Error occurred while fetching books', error);
-      throw new BadRequestException('Không thể lấy danh sách sách');
+      throw new InternalServerErrorException(
+        'Lỗi hệ thống khi tải danh sách sách, vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -47,7 +50,10 @@ export class BookService {
     return book;
   }
 
-  async createBook(request: BookRequestDto, file: UploadFile) {
+  async createBook(
+    request: BookRequestDto,
+    file: UploadFile,
+  ): Promise<BookResponseDto> {
     try {
       const uploadedImage = await this.mediaService.uploadFile(
         ImagePosition.THUMBNAIL,
@@ -58,29 +64,37 @@ export class BookService {
         ...request,
         thumbnail: uploadedImage.secure_url as string,
       };
+      if (request.categoryId !== undefined && request.categoryId.length > 0) {
+        // 1. Lọc bỏ các ID trùng lặp (nếu có) để đếm cho chuẩn
+        const uniqueCategoryIds = [...new Set(request.categoryId)];
 
-      await Promise.all(
-        request.categoryId.map(async (id) => {
-          const category = await this.categoryService.findById(id);
-          if (!category) {
-            throw new NotFoundException(`Danh mục với id ${id} không tồn tại`);
-          }
-        }),
-      );
+        // 2. Dùng findMany (chỉ tốn 1 query duy nhất)
+        const existingCategories =
+          await this.categoryService.findManyByIds(uniqueCategoryIds);
 
-      await Promise.all(
-        request.authorId.map(async (id) => {
-          const author = await this.authorService.getAuthorById(id);
-          if (!author) {
-            throw new NotFoundException(`Tác giả với id ${id} không tồn tại`);
-          }
-        }),
-      );
+        // 3. So sánh số lượng
+        if (existingCategories.length !== uniqueCategoryIds.length) {
+          throw new NotFoundException(
+            'Một hoặc nhiều danh mục không tồn tại trong hệ thống',
+          );
+        }
+      }
+      if (request.authorId !== undefined && request.authorId.length > 0) {
+        const uniqueAuthorIds = [...new Set(request.authorId)];
+        const existingAuthors =
+          await this.authorService.findAuthorsByIds(uniqueAuthorIds);
+
+        if (existingAuthors.length !== uniqueAuthorIds.length) {
+          throw new NotFoundException(
+            'Một hoặc nhiều tác giả không tồn tại trong hệ thống',
+          );
+        }
+      }
 
       return this.bookRepository.createBook(bookData);
     } catch (error) {
       this.logger.error('Error occurred while creating book', error);
-      throw new BadRequestException('Không thể thêm sách');
+      throw new InternalServerErrorException('Không thể thêm sách');
     }
   }
 
@@ -101,7 +115,7 @@ export class BookService {
       await this.bookRepository.deleteBook(id);
     } catch (error) {
       this.logger.error('Error occurred while deleting book', error);
-      throw new BadRequestException('Không thể xóa sách'); // Trả về lỗi chung cho client
+      // throw new BadRequestException('Không thể xóa sách'); // Trả về lỗi chung cho client
     }
   }
 
@@ -112,30 +126,34 @@ export class BookService {
     //nếu muốn sửa categoryId hoặc authorId thì chỉ cần cập nhật bảng trung gian là đc
 
     try {
-      if (request.categoryId) {
-        await Promise.all(
-          request.categoryId.map(async (id) => {
-            const category = await this.categoryService.findById(id);
-            if (!category) {
-              throw new NotFoundException(
-                `Danh mục với id ${id} không tồn tại`,
-              );
-            }
-          }),
-        );
+      if (request.categoryId !== undefined && request.categoryId.length > 0) {
+        // 1. Lọc bỏ các ID trùng lặp (nếu có) để đếm cho chuẩn
+        const uniqueCategoryIds = [...new Set(request.categoryId)];
+
+        // 2. Dùng findMany (chỉ tốn 1 query duy nhất)
+        const existingCategories =
+          await this.categoryService.findManyByIds(uniqueCategoryIds);
+
+        // 3. So sánh số lượng
+        if (existingCategories.length !== uniqueCategoryIds.length) {
+          throw new NotFoundException(
+            'Một hoặc nhiều danh mục không tồn tại trong hệ thống',
+          );
+        }
       }
-      if (request.authorId) {
-        await Promise.all(
-          request.authorId.map(async (id) => {
-            const author = await this.authorService.getAuthorById(id);
-            if (!author) {
-              throw new NotFoundException(`Tác giả với id ${id} không tồn tại`);
-            }
-          }),
-        );
+      if (request.authorId !== undefined && request.authorId.length > 0) {
+        const uniqueAuthorIds = [...new Set(request.authorId)];
+        const existingAuthors =
+          await this.authorService.findAuthorsByIds(uniqueAuthorIds);
+
+        if (existingAuthors.length !== uniqueAuthorIds.length) {
+          throw new NotFoundException(
+            'Một hoặc nhiều tác giả không tồn tại trong hệ thống',
+          );
+        }
       }
 
-      return this.bookRepository.updateBook(id, request);
+      return await this.bookRepository.updateBook(id, request);
     } catch (error) {
       this.logger.error('Error occurred while updating book', error);
       throw new BadRequestException('Không thể cập nhật sách'); // Trả về lỗi chung cho client

@@ -56,7 +56,7 @@ export class BookController {
     @Body() bookDto: BookRequestDto,
   ): Promise<ApiResponse<BookResponseDto>> {
     const book = await this.bookService.createBook(bookDto, file);
-    return ApiResponse.ok(book, 'Tạo sách thành công');
+    return ApiResponse.ok(book, 'Thêm sách thành công');
   }
 
   @Patch(':id')

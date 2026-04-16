@@ -75,4 +75,13 @@ export class CategoryRepository {
     //   return false;
     // });
   }
+
+  async findByManyByIds(ids: string[]) {
+    return this.prisma.category.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+      },
+    });
+  }
 }

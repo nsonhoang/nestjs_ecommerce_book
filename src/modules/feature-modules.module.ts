@@ -8,6 +8,7 @@ import { ImageBookModule } from './image-book/image-book.module';
 import { RoleModule } from './roles/role.module';
 import { UserModule } from './users/user.module';
 import { AddressModule } from './address/address.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AddressModule } from './address/address.module';
     ImageBookModule,
     AuthorModule,
     AddressModule,
+    InventoryModule,
   ],
   exports: [
     UserModule,

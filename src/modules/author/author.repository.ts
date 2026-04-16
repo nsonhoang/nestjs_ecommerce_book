@@ -71,4 +71,13 @@ export class AuthorRepository {
       data: authorDto,
     });
   }
+  // cái này dun bên book service
+  async findByManyByIds(ids: string[]) {
+    return this.prisma.author.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+      },
+    });
+  }
 }

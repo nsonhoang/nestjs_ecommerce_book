@@ -63,4 +63,7 @@ export class AuthorService {
       throw new BadRequestException('Không thể sửa tác giả'); // Trả về lỗi chung cho client
     }
   }
+  async findAuthorsByIds(ids: string[]) {
+    return this.authorRepository.findByManyByIds(ids);
+  }
 }

@@ -52,14 +52,14 @@ model Book {
 
   price         Decimal  @db.Decimal(10, 2)
 
-
+  soldCount Int @default(0)//15/4
 
 
   categories BookCategory[]
 
   // Quan hệ khác giữ nguyên
   images        BookImage[]
-  // inventory     Inventory?
+  inventory     Inventory[]
   // banners       Banner[]
   authors       BookAuthor[]
   // reviews       Review[]
@@ -73,8 +73,8 @@ model BookCategory {
   bookId     String
   categoryId String
 
-  book       Book     @relation(fields: [bookId], references: [id])
-  category   Category @relation(fields: [categoryId], references: [id])
+  book       Book     @relation(fields: [bookId], references: [id],onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id],onDelete: Cascade)
 
   @@id([bookId, categoryId]) // khóa chính kép
   @@index([categoryId])
@@ -104,8 +104,8 @@ model BookAuthor {
   bookId   String
   authorId String
 
-  book   Book   @relation(fields: [bookId], references: [id])
-  author Author @relation(fields: [authorId], references: [id])
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author Author @relation(fields: [authorId], references: [id], onDelete: Cascade)//onDelete:Mới thêm 16/4
 
   @@id([bookId, authorId])
   @@index([authorId])
@@ -132,4 +132,50 @@ model Address {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+//15/4
+
+model Inventory {
+  id        String   @id @default(uuid())
+  bookId    String   
+  // location  String   // Tên kho (Vd: Kho Quận 1, Kho Quận 7, Kho Long An) bỏ location đi sau có thể update thêm warehouseId để quản lý nhiều kho
+
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  quantity  Int      @default(0)
+
+  logs      InventoryLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // THAY @unique([bookId]) THÀNH:
+  @@unique([bookId]) // Một cuốn sách ở một vị trí cụ thể là duy nhất
+  @@index([bookId])
+}
+
+model InventoryLog {
+  id          String   @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  change      Int
+  beforeQty   Int
+  afterQty    Int
+
+  type        InventoryLogType
+  reason      String?
+
+  createdBy   String? // hoặc relation User
+
+  createdAt   DateTime @default(now())
+
+  @@index([inventoryId])
+}
+
+enum InventoryLogType {
+  IN
+  OUT
+  ADJUST
 }
