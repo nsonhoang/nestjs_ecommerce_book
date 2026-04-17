@@ -26,6 +26,9 @@ export class UserRepository {
         name: input.name,
         phone: input.phone,
         roleId: input.roleId,
+        cart: {
+          create: {}, // Tạo một cart rỗng khi tạo user mới
+        },
       },
       select: {
         id: true,

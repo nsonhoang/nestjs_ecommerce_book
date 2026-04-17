@@ -8,30 +8,7 @@ import {
   ArrayNotEmpty,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-
-function parseStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item));
-  }
-
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (Array.isArray(parsed)) {
-        return parsed.map((item) => String(item));
-      }
-    } catch {
-      // Fallback for comma-separated values.
-    }
-
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-}
+import { parseStringArray } from 'src/utils/pasrseStringArray';
 
 export class BookRequestDto {
   @IsString()

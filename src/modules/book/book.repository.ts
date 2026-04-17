@@ -105,7 +105,7 @@ export class BookRepository {
           categories: b.categories.map((bc) => bc.category),
           authors: b.authors.map((item) => item.author),
           images: b.images,
-          price: b.price.toString(),
+          price: b.price,
         })),
         meta: buildMeta(safePage, safeLimit, total),
       };
@@ -132,7 +132,7 @@ export class BookRepository {
       categories: book.categories.map((bc) => bc.category),
       authors: book.authors.map((item) => item.author),
       images: book.images,
-      price: book.price.toString(), // Decimal -> string
+      price: book.price, // Decimal -> string
     };
   }
 
@@ -178,7 +178,7 @@ export class BookRepository {
 
     return {
       ...book,
-      price: book.price.toString(),
+      price: book.price,
       authors: book.authors.map((item) => ({
         id: item.author.id,
         name: item.author.name,
@@ -240,7 +240,7 @@ export class BookRepository {
     // 5. Mapping dữ liệu trả về
     return {
       ...bookUpdate,
-      price: bookUpdate.price.toString(),
+      price: bookUpdate.price,
       authors: bookUpdate.authors.map((item) => ({
         id: item.author.id,
         name: item.author.name,
@@ -291,7 +291,7 @@ export class BookRepository {
       ...b,
       categories: b.categories.map((bc) => bc.category),
       authors: b.authors.map((item) => item.author),
-      price: b.price.toString(), // Decimal -> string
+      price: b.price, // Decimal -> string
       images: b.images,
     }));
   }
@@ -315,7 +315,7 @@ export class BookRepository {
       ...b,
       categories: b.categories.map((bc) => bc.category),
       authors: b.authors.map((item) => item.author),
-      price: b.price.toString(), // Decimal -> string
+      price: b.price, // Decimal -> string
     }));
   }
 }

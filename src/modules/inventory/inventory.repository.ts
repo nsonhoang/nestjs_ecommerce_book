@@ -23,7 +23,9 @@ export class InventoryRepository {
       },
       select: {
         id: true,
-        book: { select: { id: true, title: true, thumbnail: true } },
+        book: {
+          select: { id: true, title: true, thumbnail: true, price: true },
+        },
         quantity: true,
         createdAt: true,
         updatedAt: true,
@@ -50,7 +52,9 @@ export class InventoryRepository {
       where: { id },
       select: {
         id: true,
-        book: { select: { id: true, title: true, thumbnail: true } },
+        book: {
+          select: { id: true, title: true, thumbnail: true, price: true },
+        },
         quantity: true,
         createdAt: true,
         updatedAt: true,
@@ -75,7 +79,9 @@ export class InventoryRepository {
     return this.prisma.inventory.findMany({
       select: {
         id: true,
-        book: { select: { id: true, title: true, thumbnail: true } },
+        book: {
+          select: { id: true, title: true, thumbnail: true, price: true },
+        },
         quantity: true,
         createdAt: true,
         updatedAt: true,
@@ -88,7 +94,9 @@ export class InventoryRepository {
       where: { bookId },
       select: {
         id: true,
-        book: { select: { id: true, title: true, thumbnail: true } },
+        book: {
+          select: { id: true, title: true, thumbnail: true, price: true },
+        },
         quantity: true,
         createdAt: true,
         updatedAt: true,
@@ -105,7 +113,9 @@ export class InventoryRepository {
       data,
       select: {
         id: true,
-        book: { select: { id: true, title: true, thumbnail: true } },
+        book: {
+          select: { id: true, title: true, thumbnail: true, price: true },
+        },
         quantity: true,
         createdAt: true,
         updatedAt: true,

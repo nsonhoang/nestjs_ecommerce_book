@@ -1,10 +1,5 @@
 import { OmitType } from '@nestjs/mapped-types';
-
-class BookMinifyResponseDto {
-  id!: string;
-  title!: string;
-  thumbnail!: string;
-}
+import { BookMinifyResponseDto } from 'src/modules/book/dto/book.response.dto';
 
 export class InventoryResponseDto {
   id!: string;

@@ -21,6 +21,7 @@ model User {
   password  String
   name      String
   phone     String?
+  cart      Cart?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -43,6 +44,12 @@ model Category {
 
   books BookCategory[]
 }
+enum BookStatus {
+  DRAFT       // Bản nháp (Mặc định khi mới tạo)
+  ACTIVE      // Đang hiển thị/đang bán
+  HIDDEN      // Tạm ẩn
+  ARCHIVED    // Ngừng kinh doanh/Lưu trữ
+}
 
 model Book {
   id            String   @id @default(uuid())
@@ -50,7 +57,9 @@ model Book {
   description   String?  @db.Text
   thumbnail     String
 
-  price         Decimal  @db.Decimal(10, 2)
+  status      BookStatus @default(DRAFT)
+  // price         Decimal  @db.Decimal(10, 2)
+  price         Int
 
   soldCount Int @default(0)//15/4
 
@@ -63,7 +72,7 @@ model Book {
   // banners       Banner[]
   authors       BookAuthor[]
   // reviews       Review[]
-  // cartItems     CartItem[]
+  cartItems     CartItem[]
   // orderItems    OrderItem[]
 
   createdAt     DateTime @default(now())
@@ -179,3 +188,47 @@ enum InventoryLogType {
   OUT
   ADJUST
 }
+
+// 15/4
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  items     CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartItem {
+  id       String @id @default(uuid())
+  cartId   String
+  bookId   String
+
+  quantity Int
+ 
+
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, bookId])
+  @@index([cartId])
+}
+
+//cái này để set giảm giá
+// model Promotion {
+//   id          String   @id @default(uuid())
+//   name        String   // Tên chương trình (VD: "Flash Sale 30/4", "Back to School")
+//   discountRate Int     // Giảm bao nhiêu % (VD: 20)
+//   startDate   DateTime
+//   endDate     DateTime
+//   isActive    Boolean  @default(true)
+
+//   // Liên kết nhiều-nhiều với Book
+//   books       BookPromotion[] 
+// https://docs.google.com/document/d/14rMHBiA4laR5HwJHATVZ0r06gDYDoZAJEAD7rHeNcyM/edit?tab=t.0 đọc chỗ này để hiểu hơn về cách hoạt động của Promotion, sau này có thể thêm các trường như "type" để phân biệt giữa giảm giá theo % và giảm giá theo số tiền cố định, hoặc thêm trường "applicableCategories" để chỉ áp dụng cho một số danh mục nhất định.
+// }
