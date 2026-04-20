@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { BookRequestDto } from './dto/book.request.dto';
-import { BookResponseDto } from './dto/book.response.dto';
+import {
+  BookDetailResponseDto,
+  BookResponseDto,
+} from './dto/book.response.dto';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 
 import { buildMeta, getPagination } from 'src/utils/pagination.util';
@@ -16,8 +19,9 @@ export class BookRepository {
 
   async getBooks(
     query: PaginateBookDto,
-  ): Promise<PaginatedResult<BookResponseDto>> {
+  ): Promise<PaginatedResult<BookDetailResponseDto>> {
     try {
+      const currentDate = new Date();
       const { page, limit, keyword, sortBy, sortOrder } = query;
       const {
         page: safePage,
@@ -56,10 +60,22 @@ export class BookRepository {
       }
 
       if (query.authorId) {
+        // Lọc sách theo authorId
         andConditions.push({
           authors: {
             some: {
               authorId: query.authorId,
+            },
+          },
+        });
+      }
+
+      if (query.promotionId) {
+        // Lọc sách đang có khuyến mãi theo promotionId
+        andConditions.push({
+          promotions: {
+            some: {
+              promotionId: query.promotionId,
             },
           },
         });
@@ -94,6 +110,16 @@ export class BookRepository {
             images: true,
             categories: { include: { category: true } },
             authors: { include: { author: true } },
+            promotions: {
+              where: {
+                promotion: {
+                  isActive: true,
+                  startDate: { lte: currentDate },
+                  endDate: { gte: currentDate },
+                },
+              },
+              include: { promotion: true },
+            },
           },
         }),
         this.prisma.book.count({ where: matching }),
@@ -104,6 +130,14 @@ export class BookRepository {
           ...b,
           categories: b.categories.map((bc) => bc.category),
           authors: b.authors.map((item) => item.author),
+          promotions: b.promotions.map((bp) => ({
+            id: bp.promotion.id,
+            name: bp.promotion.name,
+            discountRate: bp.promotion.discountRate,
+            isActive: bp.promotion.isActive,
+            startDate: bp.promotion.startDate,
+            endDate: bp.promotion.endDate,
+          })),
           images: b.images,
           price: b.price,
         })),
@@ -115,13 +149,23 @@ export class BookRepository {
     }
   }
 
-  async getBookById(id: string): Promise<BookResponseDto | null> {
+  async getBookById(id: string): Promise<BookDetailResponseDto | null> {
     const book = await this.prisma.book.findUnique({
       where: { id },
       include: {
         images: true,
         categories: { include: { category: true } },
         authors: { include: { author: true } },
+        promotions: {
+          where: {
+            promotion: {
+              isActive: true,
+              startDate: { lte: new Date() },
+              endDate: { gte: new Date() },
+            },
+          },
+          include: { promotion: true },
+        },
       },
     });
 
@@ -131,6 +175,15 @@ export class BookRepository {
       ...book,
       categories: book.categories.map((bc) => bc.category),
       authors: book.authors.map((item) => item.author),
+      promotions: book.promotions.map((bp) => ({
+        id: bp.promotion.id,
+        name: bp.promotion.name,
+        discountRate: bp.promotion.discountRate,
+        isActive: bp.promotion.isActive,
+
+        startDate: bp.promotion.startDate,
+        endDate: bp.promotion.endDate,
+      })),
       images: book.images,
       price: book.price, // Decimal -> string
     };
@@ -268,10 +321,17 @@ export class BookRepository {
       await prisma.book.delete({
         where: { id },
       });
+      // await prisma.bookImage.deleteMany({ // Xóa trên service rồi
+      //   where: { bookId: id },
+      // });
+      await prisma.bookPromotion.deleteMany({
+        where: { bookId: id },
+      });
     });
   }
 
   async getBooksByAuthorId(authorId: string): Promise<BookResponseDto[]> {
+    //có filter rồi nên kh cần cái này nữa, nhưng tạm thời giữ lại để test
     const books = await this.prisma.book.findMany({
       where: {
         authors: {
@@ -296,6 +356,7 @@ export class BookRepository {
     }));
   }
   async getBooksByCategoryId(categoryId: string): Promise<BookResponseDto[]> {
+    //có filter rồi nên kh cần cái này nữa, nhưng tạm thời giữ lại để test
     const books = await this.prisma.book.findMany({
       where: {
         categories: {

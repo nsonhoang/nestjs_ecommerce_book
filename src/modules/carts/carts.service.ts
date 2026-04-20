@@ -43,6 +43,10 @@ export class CartsService {
     }
   }
 
+  async getCartCount(userId: string): Promise<number> {
+    return await this.cartRepository.getCartCount(userId);
+  }
+
   findAll() {
     return `This action returns all carts`;
   }

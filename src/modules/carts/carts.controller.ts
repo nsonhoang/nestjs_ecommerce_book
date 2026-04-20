@@ -87,4 +87,15 @@ export class CartsController {
     );
     return ApiResponse.message(`Đã xóa ${result} item khỏi giỏ hàng`, 200);
   }
+
+  //phương thức get count
+
+  @Get('/count')
+  @UseGuards(JwtAuthGuard)
+  async getCartCount(
+    @Req() req: RequestWithUser,
+  ): Promise<ApiResponse<number>> {
+    const count = await this.cartsService.getCartCount(req.user.userId);
+    return ApiResponse.ok(count, 'Lấy số lượng item trong giỏ hàng thành công');
+  }
 }

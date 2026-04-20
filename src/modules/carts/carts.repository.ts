@@ -169,6 +169,16 @@ export class CartRepository {
     return result.count;
   }
 
+  async getCartCount(userId: string): Promise<number> {
+    return await this.prisma.cartItem.count({
+      where: {
+        cart: {
+          userId,
+        },
+      },
+    });
+  }
+
   // Cập nhật số lượng item trong cart
   async updateItem(
     updateCartDto: UpdateCartItemDto,

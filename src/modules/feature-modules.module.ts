@@ -10,6 +10,7 @@ import { UserModule } from './users/user.module';
 import { AddressModule } from './address/address.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { CartsModule } from './carts/carts.module';
+import { PromotionModule } from './promotion/promotion.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CartsModule } from './carts/carts.module';
     AddressModule,
     InventoryModule,
     CartsModule,
+    PromotionModule,
   ],
   exports: [
     UserModule,

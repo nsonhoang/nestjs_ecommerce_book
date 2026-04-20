@@ -74,6 +74,7 @@ model Book {
   // reviews       Review[]
   cartItems     CartItem[]
   // orderItems    OrderItem[]
+  promotions  BookPromotion[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -219,6 +220,31 @@ model CartItem {
   @@index([cartId])
 }
 
+model Promotion {
+  id           String   @id @default(uuid())
+  name         String   // Tên chương trình (VD: "Flash Sale 30/4")
+  discountRate Int      // Giảm bao nhiêu % (VD: 20)
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean  @default(true)
+  // createdAt    DateTime @default(now())
+  // updatedAt    DateTime @updatedAt
+
+  books        BookPromotion[] 
+}
+
+// Bảng Trung gian (Pivot Table)
+model BookPromotion {
+  bookId       String
+  promotionId  String
+
+  book         Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  promotion    Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  // Khóa chính kép (Một cuốn sách chỉ được tham gia 1 chương trình đó 1 lần)
+  @@id([bookId, promotionId]) 
+}
+
 //cái này để set giảm giá
 // model Promotion {
 //   id          String   @id @default(uuid())
@@ -230,5 +256,6 @@ model CartItem {
 
 //   // Liên kết nhiều-nhiều với Book
 //   books       BookPromotion[] 
-// https://docs.google.com/document/d/14rMHBiA4laR5HwJHATVZ0r06gDYDoZAJEAD7rHeNcyM/edit?tab=t.0 đọc chỗ này để hiểu hơn về cách hoạt động của Promotion, sau này có thể thêm các trường như "type" để phân biệt giữa giảm giá theo % và giảm giá theo số tiền cố định, hoặc thêm trường "applicableCategories" để chỉ áp dụng cho một số danh mục nhất định.
 // }
+// https://docs.google.com/document/d/14rMHBiA4laR5HwJHATVZ0r06gDYDoZAJEAD7rHeNcyM/edit?tab=t.0 đọc chỗ này để hiểu hơn về cách hoạt động của Promotion, sau này có thể thêm các trường như "type" để phân biệt giữa giảm giá theo % và giảm giá theo số tiền cố định, hoặc thêm trường "applicableCategories" để chỉ áp dụng cho một số danh mục nhất định.
+// tiếp theo sẽ là  module promotion và module order, áp dụng voucher sau đó là -> thì sẽ payment(kh cần controller), có thể module shipment, n, rồi đến module review
