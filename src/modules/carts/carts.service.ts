@@ -95,4 +95,8 @@ export class CartsService {
     }
     return result;
   }
+
+  async clearCart(userId: string): Promise<number> {
+    return this.cartRepository.clearCart(userId);
+  }
 }

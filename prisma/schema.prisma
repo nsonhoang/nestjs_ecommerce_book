@@ -22,6 +22,7 @@ model User {
   name      String
   phone     String?
   cart      Cart?
+  orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -73,7 +74,7 @@ model Book {
   authors       BookAuthor[]
   // reviews       Review[]
   cartItems     CartItem[]
-  // orderItems    OrderItem[]
+  orderItems    OrderItem[]
   promotions  BookPromotion[]
 
   createdAt     DateTime @default(now())
@@ -133,6 +134,7 @@ model Address {
   district    String
   city        String
   country     String   @default("Vietnam")
+  // addressDetail nữa
 
   label       String?  // Home, Office
 
@@ -227,8 +229,8 @@ model Promotion {
   startDate    DateTime
   endDate      DateTime
   isActive     Boolean  @default(true)
-  // createdAt    DateTime @default(now())
-  // updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   books        BookPromotion[] 
 }
@@ -258,4 +260,65 @@ model BookPromotion {
 //   books       BookPromotion[] 
 // }
 // https://docs.google.com/document/d/14rMHBiA4laR5HwJHATVZ0r06gDYDoZAJEAD7rHeNcyM/edit?tab=t.0 đọc chỗ này để hiểu hơn về cách hoạt động của Promotion, sau này có thể thêm các trường như "type" để phân biệt giữa giảm giá theo % và giảm giá theo số tiền cố định, hoặc thêm trường "applicableCategories" để chỉ áp dụng cho một số danh mục nhất định.
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNING // trả hàng
+  REFUNDED // hoàn tiền
+}
+
+enum OrderPaymentMethod {
+  COD
+  VNPAY
+}
+
+model Order {
+  id               String            @id @default(uuid())
+  code             String            @unique
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           OrderStatus       @default(PENDING)
+  paymentMethod    OrderPaymentMethod
+  subtotalAmount   Int
+  discountAmount   Int               @default(0)
+  shippingFee      Int               @default(0)
+  totalAmount      Int
+  shippingName     String
+  shippingPhone    String
+  shippingAddress  String
+  shippingWard     String
+  shippingDistrict String
+  shippingCity     String
+  shippingCountry  String            @default("Vietnam")
+  note             String?
+  items            OrderItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id             String   @id @default(uuid())
+  orderId        String
+  bookId         String
+  bookTitle      String
+  quantity       Int
+  unitPrice      Int
+  discountAmount Int      @default(0)
+  totalAmount    Int
+
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  book           Book     @relation(fields: [bookId], references: [id], onDelete: Restrict)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([bookId])
+}
 // tiếp theo sẽ là  module promotion và module order, áp dụng voucher sau đó là -> thì sẽ payment(kh cần controller), có thể module shipment, n, rồi đến module review

@@ -146,7 +146,16 @@ export class PromotionRepository {
         },
       },
     });
-    return promotion;
+    return {
+      id: promotion?.id,
+      name: promotion?.name,
+      discountRate: promotion?.discountRate,
+      isActive: promotion?.isActive,
+      startDate: promotion?.startDate,
+      endDate: promotion?.endDate,
+      bookIds: promotion?.books.map((b) => b.bookId),
+      bookCount: promotion?._count.books,
+    } as PromotionResponseDto;
   }
 
   //hàm này có thể bỏ nếu filter
@@ -157,8 +166,27 @@ export class PromotionRepository {
         startDate: { lte: now },
         endDate: { gte: now },
       },
+      include: {
+        books: {
+          select: {
+            bookId: true,
+          },
+        },
+        _count: {
+          select: { books: true },
+        },
+      },
     });
-    return promotions;
+    return promotions.map((promotion) => ({
+      id: promotion.id,
+      name: promotion.name,
+      discountRate: promotion.discountRate,
+      isActive: promotion.isActive,
+      startDate: promotion.startDate,
+      endDate: promotion.endDate,
+      bookIds: promotion.books.map((b) => b.bookId),
+      bookCount: promotion._count.books,
+    }));
   }
 
   async update(

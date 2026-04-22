@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-import { AddressRequestDTO } from './dto/address.request.dto';
+import {
+  AddressRequestDTO,
+  CreateAddressWithUserId,
+} from './dto/address.request.dto';
 import { AddressResponseDTO } from './dto/address.response';
 
 @Injectable()
@@ -9,7 +12,7 @@ export class AddressRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(
-    createAddressDto: AddressRequestDTO,
+    createAddressDto: CreateAddressWithUserId,
   ): Promise<AddressResponseDTO> {
     const address = await this.prisma.address.create({
       data: {

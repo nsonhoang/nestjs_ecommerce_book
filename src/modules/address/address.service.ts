@@ -13,9 +13,13 @@ export class AddressService {
 
   async create(
     createAddressDto: AddressRequestDTO,
+    userId: string,
   ): Promise<AddressResponseDTO> {
     try {
-      const address = await this.addressRepository.create(createAddressDto);
+      const address = await this.addressRepository.create({
+        ...createAddressDto,
+        userId,
+      });
       return address;
     } catch (error) {
       this.logger.error('Error occurred while creating address', error);

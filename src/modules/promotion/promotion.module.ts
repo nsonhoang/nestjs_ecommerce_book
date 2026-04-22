@@ -8,5 +8,6 @@ import { PromotionRepository } from './promotion.repository';
   imports: [PrismaModule],
   controllers: [PromotionController],
   providers: [PromotionService, PromotionRepository],
+  exports: [PromotionService],
 })
 export class PromotionModule {}

@@ -9,9 +9,9 @@ import {
 } from 'class-validator';
 
 export class AddressRequestDTO {
-  @IsNotEmpty()
-  @IsString()
-  userId!: string;
+  // @IsNotEmpty()
+  // @IsString()
+  // userId!: string;
 
   @IsString()
   @MinLength(2, { message: 'Tên phải có ít nhất 2 ký tự' })
@@ -60,4 +60,8 @@ export class AddressRequestDTO {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+}
+
+export class CreateAddressWithUserId extends AddressRequestDTO {
+  userId!: string;
 }

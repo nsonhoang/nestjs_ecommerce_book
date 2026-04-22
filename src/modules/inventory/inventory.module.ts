@@ -9,5 +9,6 @@ import { InventoryRepository } from './inventory.repository';
   imports: [PrismaModule],
   controllers: [InventoryController],
   providers: [InventoryService, InventoryRepository],
+  exports: [InventoryService],
 })
 export class InventoryModule {}

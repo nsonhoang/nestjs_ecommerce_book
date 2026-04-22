@@ -11,6 +11,7 @@ import { AddressModule } from './address/address.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { CartsModule } from './carts/carts.module';
 import { PromotionModule } from './promotion/promotion.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PromotionModule } from './promotion/promotion.module';
     InventoryModule,
     CartsModule,
     PromotionModule,
+    OrdersModule,
   ],
   exports: [
     UserModule,
@@ -34,6 +36,10 @@ import { PromotionModule } from './promotion/promotion.module';
     CategoryModule,
     ImageBookModule,
     AuthorModule,
+    InventoryModule,
+    CartsModule,
+    PromotionModule,
+    OrdersModule,
   ],
 })
 export class FeatureModulesModule {}

@@ -36,7 +36,7 @@ export class CartRepository {
       where: {
         cartId_bookId: {
           cartId: cart.id,
-          bookId,
+          bookId, //khoong phai truyen bookID khong vao maf truyền cẩ giá khuyễn mãi vào tránh việc có khuyên mãi mà giá vẫn không thay đổi
         },
       },
       update: {
@@ -166,6 +166,23 @@ export class CartRepository {
         },
       },
     });
+    return result.count;
+  }
+
+  async clearCart(userId: string): Promise<number> {
+    const cart = await this.prisma.cart.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!cart) {
+      return 0;
+    }
+
+    const result = await this.prisma.cartItem.deleteMany({
+      where: { cartId: cart.id },
+    });
+
     return result.count;
   }
 
