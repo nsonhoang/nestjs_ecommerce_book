@@ -68,12 +68,18 @@ export class VouchersService {
       throw new NotFoundException('Không tìm thấy voucher');
     }
 
-    const nextCode = data.code ? this.normalizeCode(data.code) : existing.code;
-    if (data.code && nextCode !== existing.code) {
-      const duplicated = await this.vouchersRepository.findByCode(nextCode);
-      if (duplicated) {
-        throw new BadRequestException('Voucher code đã tồn tại');
-      }
+    // const nextCode = data.code ? this.normalizeCode(data.code) : existing.code;
+    // if (data.code && nextCode !== existing.code) {
+    //   const duplicated = await this.vouchersRepository.findByCode(nextCode);
+    //   if (duplicated) {
+    //     throw new BadRequestException('Voucher code đã tồn tại');
+    //   }
+    // }
+
+    if (data.usageLimit !== undefined && data.usageLimit < existing.usedCount) {
+      throw new BadRequestException(
+        'usageLimit không được nhỏ hơn usedCount hiện tại',
+      );
     }
 
     const nextStartDate = data.startDate
@@ -84,32 +90,32 @@ export class VouchersService {
       : existing.endDate;
     this.validateDateRange(nextStartDate, nextEndDate);
 
-    const nextDiscountType = data.discountType ?? existing.discountType;
-    const nextDiscountValue = data.discountValue ?? existing.discountValue;
-    const nextMaxDiscount =
-      data.maxDiscount ?? existing.maxDiscount ?? undefined;
-    this.validateDiscountRule(
-      nextDiscountType,
-      nextDiscountValue,
-      nextMaxDiscount,
-    );
+    // const nextDiscountType = data.discountType ?? existing.discountType;
+    // const nextDiscountValue = data.discountValue ?? existing.discountValue;
+    // const nextMaxDiscount =
+    //   data.maxDiscount ?? existing.maxDiscount ?? undefined;
+    // this.validateDiscountRule(
+    //   nextDiscountType,
+    //   nextDiscountValue,
+    //   nextMaxDiscount,
+    // );
 
-    if (
-      data.usageLimit !== undefined &&
-      data.usageLimit < (data.usedCount ?? existing.usedCount)
-    ) {
-      throw new BadRequestException(
-        'usageLimit không được nhỏ hơn usedCount hiện tại',
-      );
-    }
+    // if (
+    //   data.usageLimit !== undefined &&
+    //   data.usageLimit < (data.usedCount ?? existing.usedCount)
+    // ) {
+    //   throw new BadRequestException(
+    //     'usageLimit không được nhỏ hơn usedCount hiện tại',
+    //   );
+    // }
 
-    if (data.usedCount !== undefined && data.usedCount < 0) {
-      throw new BadRequestException('usedCount không hợp lệ');
-    }
+    // if (data.usedCount !== undefined && data.usedCount < 0) {
+    //   throw new BadRequestException('usedCount không hợp lệ');
+    // }
 
     return this.vouchersRepository.update(id, {
       ...data,
-      code: data.code ? nextCode : undefined,
+      // code: data.code ? nextCode : undefined,
       startDate: data.startDate ? nextStartDate : undefined,
       endDate: data.endDate ? nextEndDate : undefined,
     });
