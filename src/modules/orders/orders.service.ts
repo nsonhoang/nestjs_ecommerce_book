@@ -19,6 +19,7 @@ import { OrderResponseDto } from './dto/order.response.dto';
 import { OrdersRepository } from './orders.repository';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
+import { VouchersService } from '../vouchers/vouchers.service';
 
 type OrderItemPayload = {
   bookId: string;
@@ -38,6 +39,7 @@ export class OrdersService {
     private readonly cartsService: CartsService,
     private readonly inventoryService: InventoryService,
     private readonly promotionService: PromotionService,
+    private readonly vouchersService: VouchersService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -66,7 +68,6 @@ export class OrdersService {
       const activePromotions =
         await this.promotionService.getActivePromotions();
 
-      console.log('activePromotions', activePromotions);
       const promotionLookup = new Map<string, number>();
       for (const promotion of activePromotions) {
         for (const bookId of promotion.bookIds ?? []) {
@@ -80,7 +81,7 @@ export class OrdersService {
 
       const items: OrderItemPayload[] = [];
       let subtotalAmount = 0;
-      let discountAmount = 0;
+      let promotionDiscountAmount = 0;
 
       for (const cartItem of filteredItems) {
         const inventory = await this.inventoryService.findByBookId(
@@ -108,7 +109,7 @@ export class OrdersService {
         const itemTotalAmount = itemSubtotal - itemDiscountAmount;
 
         subtotalAmount += itemSubtotal;
-        discountAmount += itemDiscountAmount;
+        promotionDiscountAmount += itemDiscountAmount;
         items.push({
           bookId: cartItem.book.id,
           bookTitle: cartItem.book.title,
@@ -138,10 +139,34 @@ export class OrdersService {
       // // Giả sử bạn có service tính phí ship, đừng tin request.shippingFee hoàn toàn
       //     const shippingFee = await this.shippingService.calculateFee(address);
       const shippingFee = request.shippingFee ?? 0; // nên lấy giá ship của api ghn trả về
-      const totalAmount = subtotalAmount - discountAmount + shippingFee;
       const orderCode = this.generateOrderCode();
 
       const createdOrder = await this.prisma.$transaction(async (tx) => {
+        let voucherId: string | undefined;
+        let voucherDiscountAmount = 0;
+
+        if (request.voucherCode) {
+          const amountForVoucher = Math.max(
+            0,
+            subtotalAmount - promotionDiscountAmount,
+          );
+          const voucherResult = await this.vouchersService.applyVoucherForOrder(
+            // sửa lại cái service này 1 user chỉ đc sử dụng voucher 1 lần thôi
+            tx,
+            {
+              code: request.voucherCode,
+              orderAmount: amountForVoucher,
+              userId: user.userId,
+            },
+          );
+          voucherId = voucherResult.voucherId;
+          voucherDiscountAmount = voucherResult.discountAmount;
+        }
+
+        const finalDiscountAmount =
+          promotionDiscountAmount + voucherDiscountAmount;
+        const totalAmount = subtotalAmount - finalDiscountAmount + shippingFee;
+
         const order = await this.ordersRepository.create(tx, {
           code: orderCode,
           user: {
@@ -150,7 +175,7 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           paymentMethod: request.paymentMethod || OrderPaymentMethod.COD,
           subtotalAmount,
-          discountAmount,
+          discountAmount: finalDiscountAmount,
           shippingFee,
           totalAmount,
           shippingName: address.fullName,
@@ -161,6 +186,7 @@ export class OrdersService {
           shippingCity: address.city,
           shippingCountry: address.country ?? 'Vietnam',
           note: request.note,
+          voucher: voucherId ? { connect: { id: voucherId } } : undefined,
           items: {
             create: items.map((item) => ({
               bookId: item.bookId,
@@ -177,6 +203,11 @@ export class OrdersService {
           await tx.inventory.update({
             where: { bookId: item.bookId },
             data: { quantity: { decrement: item.quantity } },
+          });
+
+          await tx.book.update({
+            where: { id: item.bookId },
+            data: { soldCount: { increment: item.quantity } },
           });
         }
 
@@ -197,6 +228,28 @@ export class OrdersService {
       ) {
         throw error;
       }
+
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: unknown }).code === 'P2002'
+      ) {
+        const target = (error as { meta?: unknown }).meta as
+          | { target?: unknown }
+          | undefined;
+        const fields = target?.target;
+        if (
+          Array.isArray(fields) &&
+          fields.includes('userId') &&
+          fields.includes('voucherId')
+        ) {
+          throw new BadRequestException(
+            'Mỗi voucher chỉ được sử dụng 1 lần/user',
+          );
+        }
+      }
+
       throw new InternalServerErrorException('Không thể tạo đơn hàng');
     }
   }

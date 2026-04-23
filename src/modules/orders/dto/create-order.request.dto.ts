@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  MaxLength,
 } from 'class-validator';
 import { OrderPaymentMethod } from 'generated/prisma/enums';
 
@@ -51,4 +52,9 @@ export class CreateOrderRequestDto {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  voucherCode?: string;
 }

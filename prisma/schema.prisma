@@ -296,10 +296,13 @@ model Order {
   shippingCountry  String            @default("Vietnam")
   note             String?
   items            OrderItem[]
+  voucherId        String?           // Mã giảm giá áp dụng cho đơn hàng (nếu có)
+  voucher          Voucher?          @relation(fields: [voucherId], references: [id], onDelete: SetNull)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   @@index([userId])
+  @@unique([userId, voucherId])
 }
 
 model OrderItem {
@@ -320,5 +323,34 @@ model OrderItem {
 
   @@index([orderId])
   @@index([bookId])
+}
+
+model Voucher {
+  id              String   @id @default(uuid())
+  code            String   @unique // Ví dụ: Giamgia50k, CHAOHE2026
+  description     String?
+  
+  discountType    DiscountType // FIXED_AMOUNT (Trừ tiền thẳng) hoặc PERCENTAGE (% đơn hàng)
+  discountValue   Float        // Giá trị giảm (Ví dụ: 50000 hoặc 10)
+  
+  maxDiscount     Float?       // Giảm tối đa (Dùng khi giảm theo %, ví dụ giảm 10% tối đa 50k)
+  minOrderValue   Float    @default(0) // Đơn hàng tối thiểu để áp dụng mã
+  
+  usageLimit      Int      @default(1) // Tổng số lượt mã này được sử dụng (VD: 100 lượt toàn sàn)
+  usedCount       Int      @default(0) // Số lượt đã dùng thực tế
+  
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean  @default(true)
+  
+  // Quan hệ 1-N với Order để biết mã nào đã dùng cho đơn nào
+  orders          Order[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt //sau có thể phát thêm voucher
+}
+
+enum DiscountType {
+  FIXED_AMOUNT
+  PERCENTAGE
 }
 // tiếp theo sẽ là  module promotion và module order, áp dụng voucher sau đó là -> thì sẽ payment(kh cần controller), có thể module shipment, n, rồi đến module review

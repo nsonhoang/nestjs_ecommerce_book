@@ -12,6 +12,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { CartsModule } from './carts/carts.module';
 import { PromotionModule } from './promotion/promotion.module';
 import { OrdersModule } from './orders/orders.module';
+import { VouchersModule } from './vouchers/vouchers.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { OrdersModule } from './orders/orders.module';
     CartsModule,
     PromotionModule,
     OrdersModule,
+    VouchersModule,
   ],
   exports: [
     UserModule,
@@ -40,6 +42,7 @@ import { OrdersModule } from './orders/orders.module';
     CartsModule,
     PromotionModule,
     OrdersModule,
+    VouchersModule,
   ],
 })
 export class FeatureModulesModule {}
