@@ -1,3 +1,9 @@
+import {
+  DistrictResponse,
+  ProvinceResponse,
+  WardResponse,
+} from 'src/modules/ghn/dto/ghn.response.dto';
+
 export class AddressResponseDTO {
   id!: string;
 
@@ -9,11 +15,11 @@ export class AddressResponseDTO {
 
   addressLine!: string;
 
-  ward!: string;
+  ward!: WardResponse;
 
-  district!: string;
+  district!: DistrictResponse;
 
-  city!: string;
+  province!: ProvinceResponse;
 
   // 🌍 Optional
 

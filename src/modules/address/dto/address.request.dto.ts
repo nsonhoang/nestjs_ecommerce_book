@@ -6,13 +6,11 @@ import {
   MinLength,
   IsOptional,
   IsBoolean,
+  IsInt,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class AddressRequestDTO {
-  // @IsNotEmpty()
-  // @IsString()
-  // userId!: string;
-
   @IsString()
   @MinLength(2, { message: 'Tên phải có ít nhất 2 ký tự' })
   @MaxLength(100, { message: 'Tên không được quá 100 ký tự' })
@@ -29,39 +27,43 @@ export class AddressRequestDTO {
   @IsString()
   @MinLength(5, { message: 'Địa chỉ quá ngắn' })
   @MaxLength(255, { message: 'Địa chỉ không được quá 255 ký tự' })
-  @IsNotEmpty({ message: 'Địa chỉ không được để trống' })
+  @IsNotEmpty({ message: 'Địa chỉ cụ thể không được để trống' })
   addressLine!: string;
 
-  // 🧠 Thêm cho đúng chuẩn VN
-  @IsString()
-  @IsNotEmpty({ message: 'Phường/Xã không được để trống' })
-  ward!: string;
+  // 🏥 Phường/Xã: GHN quy định là String
 
   @IsString()
-  @IsNotEmpty({ message: 'Quận/Huyện không được để trống' })
-  district!: string;
+  @IsNotEmpty({ message: 'Mã Phường/Xã là bắt buộc' })
+  wardCode!: string;
 
-  @IsString()
-  @IsNotEmpty({ message: 'Tỉnh/Thành phố không được để trống' })
-  city!: string;
+  // 🏙️ Quận/Huyện: Trong Schema là Int, nên dùng IsInt
+  @IsInt({ message: 'District ID phải là số nguyên' })
+  @IsNotEmpty({ message: 'ID Quận/Huyện là bắt buộc' })
+  @Type(() => Number) // Đảm bảo convert từ string sang number nếu nhận từ form-data
+  districtId!: number;
 
-  // 🌍 Optional
+  // 🗺️ Tỉnh/Thành phố: Trong Schema bạn đặt tên là cityId (Int)
+  @IsInt({ message: 'City ID phải là số nguyên' })
+  @IsNotEmpty({ message: 'ID Tỉnh/Thành phố là bắt buộc' })
+  @Type(() => Number)
+  provinceId!: number;
+
   @IsOptional()
   @IsString()
   country?: string;
 
-  // 🏷️ Label (Home, Office)
   @IsOptional()
   @IsString()
   @MaxLength(50)
   label?: string;
 
-  // ⭐ Default address
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 }
 
 export class CreateAddressWithUserId extends AddressRequestDTO {
+  @IsString()
+  @IsNotEmpty()
   userId!: string;
 }

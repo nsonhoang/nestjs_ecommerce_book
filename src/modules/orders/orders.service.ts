@@ -20,6 +20,7 @@ import { OrdersRepository } from './orders.repository';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
 import { VouchersService } from '../vouchers/vouchers.service';
+import { AddressService } from '../address/address.service';
 
 type OrderItemPayload = {
   bookId: string;
@@ -36,6 +37,7 @@ export class OrdersService {
 
   constructor(
     private readonly ordersRepository: OrdersRepository,
+    private readonly addressService: AddressService,
     private readonly cartsService: CartsService,
     private readonly inventoryService: InventoryService,
     private readonly promotionService: PromotionService,
@@ -120,22 +122,10 @@ export class OrdersService {
         });
       }
 
-      const address = await this.prisma.address.findUnique({
-        where: { id: request.addressId, userId: user.userId },
-        select: {
-          fullName: true,
-          phone: true,
-          addressLine: true,
-          ward: true,
-          district: true,
-          city: true,
-          country: true,
-        },
-      });
-
-      if (!address) {
-        throw new BadRequestException('Địa chỉ giao hàng không hợp lệ');
-      }
+      const address = await this.addressService.findOneForUser(
+        request.addressId,
+        user.userId,
+      );
       // // Giả sử bạn có service tính phí ship, đừng tin request.shippingFee hoàn toàn
       //     const shippingFee = await this.shippingService.calculateFee(address);
       const shippingFee = request.shippingFee ?? 0; // nên lấy giá ship của api ghn trả về
@@ -181,9 +171,9 @@ export class OrdersService {
           shippingName: address.fullName,
           shippingPhone: address.phone,
           shippingAddress: address.addressLine,
-          shippingWard: address.ward,
-          shippingDistrict: address.district,
-          shippingCity: address.city,
+          shippingWard: address.ward.WardName,
+          shippingDistrict: address.district.DistrictName,
+          shippingCity: address.province.ProvinceName,
           shippingCountry: address.country ?? 'Vietnam',
           note: request.note,
           voucher: voucherId ? { connect: { id: voucherId } } : undefined,

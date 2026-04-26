@@ -4,9 +4,10 @@ import { AddressController } from './address.controller';
 
 import { PrismaModule } from '../prisma/prisma.module';
 import { AddressRepository } from './address.repository';
+import { GhnModule } from '../ghn/ghn.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GhnModule],
   controllers: [AddressController],
   providers: [AddressService, AddressRepository],
   exports: [AddressService],

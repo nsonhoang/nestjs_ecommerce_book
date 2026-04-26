@@ -7,22 +7,26 @@ import {
 } from './dto/address.request.dto';
 import { AddressResponseDTO } from './dto/address.response';
 
+export type AddressWithLocation = Omit<AddressResponseDTO, 'ward'> & {
+  wardCode: string;
+};
+
 @Injectable()
 export class AddressRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(
     createAddressDto: CreateAddressWithUserId,
-  ): Promise<AddressResponseDTO> {
+  ): Promise<AddressWithLocation> {
     const address = await this.prisma.address.create({
       data: {
         userId: createAddressDto.userId,
         fullName: createAddressDto.fullName,
         phone: createAddressDto.phone,
         addressLine: createAddressDto.addressLine,
-        ward: createAddressDto.ward,
-        district: createAddressDto.district,
-        city: createAddressDto.city,
+        wardCode: createAddressDto.wardCode,
+        districtId: createAddressDto.districtId,
+        provinceId: createAddressDto.provinceId,
         country: createAddressDto.country ?? undefined,
         label: createAddressDto.label ?? undefined,
         isDefault: createAddressDto.isDefault ?? false,
@@ -33,9 +37,9 @@ export class AddressRepository {
         fullName: true,
         phone: true,
         addressLine: true,
-        ward: true,
+        wardCode: true,
         district: true,
-        city: true,
+        province: true,
         country: true,
         label: true,
         isDefault: true,
@@ -44,12 +48,19 @@ export class AddressRepository {
 
     return {
       ...address,
-      label: address.label ?? undefined,
-      country: address.country ?? undefined,
+      district: {
+        DistrictID: address.district.id,
+        DistrictName: address.district.name,
+        ProvinceID: address.district.provinceId,
+      },
+      province: {
+        ProvinceID: address.province.id,
+        ProvinceName: address.province.name,
+      },
     };
   }
 
-  async findAll(): Promise<AddressResponseDTO[]> {
+  async findAll(): Promise<AddressWithLocation[]> {
     const addresses = await this.prisma.address.findMany({
       select: {
         id: true,
@@ -57,9 +68,9 @@ export class AddressRepository {
         fullName: true,
         phone: true,
         addressLine: true,
-        ward: true,
+        wardCode: true,
         district: true,
-        city: true,
+        province: true,
         country: true,
         label: true,
         isDefault: true,
@@ -68,12 +79,21 @@ export class AddressRepository {
 
     return addresses.map((address) => ({
       ...address,
+      district: {
+        DistrictID: address.district.id,
+        DistrictName: address.district.name,
+        ProvinceID: address.district.provinceId,
+      },
+      province: {
+        ProvinceID: address.province.id,
+        ProvinceName: address.province.name,
+      },
       label: address.label ?? undefined,
       country: address.country ?? undefined,
     }));
   }
 
-  async findOne(id: string): Promise<AddressResponseDTO | null> {
+  async findOne(id: string): Promise<AddressWithLocation | null> {
     const address = await this.prisma.address.findUnique({
       where: { id },
       select: {
@@ -82,9 +102,9 @@ export class AddressRepository {
         fullName: true,
         phone: true,
         addressLine: true,
-        ward: true,
+        wardCode: true,
         district: true,
-        city: true,
+        province: true,
         country: true,
         label: true,
         isDefault: true,
@@ -94,6 +114,54 @@ export class AddressRepository {
     return address
       ? {
           ...address,
+          district: {
+            DistrictID: address.district.id,
+            DistrictName: address.district.name,
+            ProvinceID: address.district.provinceId,
+          },
+          province: {
+            ProvinceID: address.province.id,
+            ProvinceName: address.province.name,
+          },
+          label: address.label ?? undefined,
+          country: address.country ?? undefined,
+        }
+      : null;
+  }
+
+  async findOneForUser(
+    id: string,
+    userId: string,
+  ): Promise<AddressWithLocation | null> {
+    const address = await this.prisma.address.findFirst({
+      where: { id, userId },
+      select: {
+        id: true,
+        userId: true,
+        fullName: true,
+        phone: true,
+        addressLine: true,
+        wardCode: true,
+        district: true,
+        province: true,
+        country: true,
+        label: true,
+        isDefault: true,
+      },
+    });
+
+    return address
+      ? {
+          ...address,
+          district: {
+            DistrictID: address.district.id,
+            DistrictName: address.district.name,
+            ProvinceID: address.district.provinceId,
+          },
+          province: {
+            ProvinceID: address.province.id,
+            ProvinceName: address.province.name,
+          },
           label: address.label ?? undefined,
           country: address.country ?? undefined,
         }
@@ -103,7 +171,7 @@ export class AddressRepository {
   async update(
     id: string,
     updateAddressDto: Partial<AddressRequestDTO>,
-  ): Promise<AddressResponseDTO | null> {
+  ): Promise<AddressWithLocation | null> {
     const address = await this.prisma.address.update({
       where: { id },
       data: {
@@ -111,9 +179,9 @@ export class AddressRepository {
         phone: updateAddressDto.phone,
         addressLine: updateAddressDto.addressLine,
 
-        ward: updateAddressDto.ward,
-        district: updateAddressDto.district,
-        city: updateAddressDto.city,
+        wardCode: updateAddressDto.wardCode ?? undefined,
+        districtId: updateAddressDto.districtId ?? undefined,
+        provinceId: updateAddressDto.provinceId ?? undefined,
         country: updateAddressDto.country ?? undefined,
         label: updateAddressDto.label ?? undefined,
         isDefault: updateAddressDto.isDefault,
@@ -124,9 +192,9 @@ export class AddressRepository {
         fullName: true,
         phone: true,
         addressLine: true,
-        ward: true,
+        wardCode: true,
         district: true,
-        city: true,
+        province: true,
         country: true,
         label: true,
         isDefault: true,
@@ -136,6 +204,15 @@ export class AddressRepository {
     return address
       ? {
           ...address,
+          district: {
+            DistrictID: address.district.id,
+            DistrictName: address.district.name,
+            ProvinceID: address.district.provinceId,
+          },
+          province: {
+            ProvinceID: address.province.id,
+            ProvinceName: address.province.name,
+          },
           label: address.label ?? undefined,
           country: address.country ?? undefined,
         }

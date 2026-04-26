@@ -72,7 +72,13 @@ export class UserRepository {
           createdAt: true,
           updatedAt: true,
           role: { select: { id: true, name: true } },
-          addresses: true,
+          // addresses: {
+          //   include: {
+          //     province: true,
+          //     ward: true,
+          //     district: true,
+          //   },
+          // },
         },
       }),
       this.prisma.user.count({
@@ -133,20 +139,19 @@ export class UserRepository {
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: updateData,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
         role: {
-          select: { id: true, name: true },
+          select: { id: true, name: true }, // Lấy role
         },
-        addresses: true,
+        addresses: {
+          include: {
+            province: true, // Lưu ý: Tên field trong Schema của bạn là city, không phải province
+            district: true,
+          },
+        },
       },
     });
 
-    return updatedUser as UserResponseDto;
+    return updatedUser as unknown as UserResponseDto;
   }
 }

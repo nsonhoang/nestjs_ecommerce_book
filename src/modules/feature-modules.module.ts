@@ -8,6 +8,7 @@ import { ImageBookModule } from './image-book/image-book.module';
 import { RoleModule } from './roles/role.module';
 import { UserModule } from './users/user.module';
 import { AddressModule } from './address/address.module';
+import { GhnModule } from './ghn/ghn.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { CartsModule } from './carts/carts.module';
 import { PromotionModule } from './promotion/promotion.module';
@@ -24,6 +25,7 @@ import { VouchersModule } from './vouchers/vouchers.module';
     ImageBookModule,
     AuthorModule,
     AddressModule,
+    GhnModule,
     InventoryModule,
     CartsModule,
     PromotionModule,
