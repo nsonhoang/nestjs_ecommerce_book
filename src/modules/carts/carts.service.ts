@@ -14,6 +14,7 @@ import { CartItemResponseDto, CartResponseDto } from './dto/cart.response.dto';
 import { CartRepository } from './carts.repository';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
 import { UpdateCartItemDto } from './dto/update-cart.dto';
+import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class CartsService {
@@ -45,6 +46,14 @@ export class CartsService {
 
   async getCartCount(userId: string): Promise<number> {
     return await this.cartRepository.getCartCount(userId);
+  }
+
+  async deleteItemsByTx(
+    tx: Prisma.TransactionClient,
+    cartId: string,
+    itemIds: string[],
+  ): Promise<number> {
+    return await this.cartRepository.deleteItemsByTx(tx, cartId, itemIds);
   }
 
   findAll() {

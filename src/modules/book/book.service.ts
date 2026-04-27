@@ -19,6 +19,7 @@ import { MediaService, UploadFile } from 'src/media/media.service';
 import { ImagePosition } from 'src/common/Enum/image-position.enum';
 import { ImageBookService } from '../image-book/image-book.service';
 import { PromotionResponseDto } from '../promotion/dto/promotion.response';
+import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class BookService {
@@ -30,6 +31,14 @@ export class BookService {
     private readonly mediaService: MediaService,
     private readonly imageBookService: ImageBookService,
   ) {}
+
+  async updateSoldCountByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<void> {
+    await this.bookRepository.updateSoldCountByTx(tx, bookId, quantity);
+  }
 
   async getBooks(
     query: PaginateBookDto,

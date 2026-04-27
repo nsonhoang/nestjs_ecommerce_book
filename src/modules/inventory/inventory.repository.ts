@@ -9,10 +9,26 @@ import {
   InventoryLogResponseDto,
   InventoryResponseDto,
 } from './dto/inventory.response.dto';
+import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class InventoryRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async decrementStockByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<number> {
+    const updateStock = await tx.inventory.updateMany({
+      where: {
+        bookId: bookId,
+        quantity: { gte: quantity },
+      },
+      data: { quantity: { decrement: quantity } },
+    });
+    return updateStock.count;
+  }
 
   async create(request: InventoryRequestDto): Promise<InventoryResponseDto> {
     //mặc dịnh quantity là 0 khi thêm sản phẩm vòa kho và phải có thêm bước nhập kho để cập nhật số lượng sau

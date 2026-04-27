@@ -17,6 +17,17 @@ import { PaginateBookDto } from './dto/paginate-book.dto';
 export class BookRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async updateSoldCountByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<void> {
+    await tx.book.update({
+      where: { id: bookId },
+      data: { soldCount: { increment: quantity } },
+    });
+  }
+
   async getBooks(
     query: PaginateBookDto,
   ): Promise<PaginatedResult<BookDetailResponseDto>> {

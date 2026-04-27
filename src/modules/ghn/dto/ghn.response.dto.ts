@@ -1,3 +1,5 @@
+import { Exclude } from 'class-transformer';
+
 // Cấu trúc chung của mọi phản hồi từ GHN
 export interface IGhnResponse<T> {
   code: number;
@@ -17,6 +19,7 @@ export class DistrictResponse {
   ProvinceID!: number;
 }
 
+@Exclude()
 export class WardResponse {
   WardCode!: string;
   WardName!: string;

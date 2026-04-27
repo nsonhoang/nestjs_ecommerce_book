@@ -12,6 +12,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { GhnRepository } from './ghn.repository';
+import { GhnCalculateFeeRequestDto } from './dto/calculate-fee.request.dto';
+import { ShippingFeeResponseDto } from './dto/calculate-fee.response.dto';
 
 @Injectable()
 export class GhnService {
@@ -126,5 +128,35 @@ export class GhnService {
       ),
     );
     return response.data.data;
+  }
+
+  async calculateShippingFee(
+    payload: GhnCalculateFeeRequestDto,
+  ): Promise<ShippingFeeResponseDto> {
+    const response = await firstValueFrom(
+      this.httpService.post<IGhnResponse<{ total: number }>>(
+        `${this.baseUrl}/v2/shipping-order/fee`,
+        {
+          to_district_id: payload.to_district_id,
+          to_ward_code: payload.to_ward_code,
+          weight: payload.weight,
+          insurance_value: payload.insurance_value || 0,
+          service_type_id: 2, // Gói chuẩn (GHN thường dùng gói này)
+          height: payload.height,
+          length: payload.length,
+          width: payload.width,
+          coupon: payload.coupon, // Mã giảm giá của GHN nếu có
+          // cod_failed_amount: payload.cod_failed_amount, // tính giá trị COD thất bại nếu có
+          cod_value: payload.cod_value, // giá trị COD nếu có, GHN sẽ tính thêm phí COD dựa trên giá trị này
+        },
+        { headers: this.headers },
+      ),
+    );
+    return {
+      total: response.data.data.total,
+      service_fee: response.data.data.total, // GHN không trả về chi tiết phí, nên tạm gán tổng phí vào service_fee
+      insurance_fee: 0, // GHN không trả về phí bảo hiểm riêng, nên tạm để 0
+      display_fee: `${response.data.data.total.toLocaleString('vi-VN')}đ`, // Định dạng số thành chuỗi có dấu phân cách hàng nghìn và thêm "đ"
+    };
   }
 }

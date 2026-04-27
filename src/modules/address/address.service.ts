@@ -22,12 +22,18 @@ export class AddressService {
     districtId: number;
     wardCode: string;
   }): Promise<WardResponse> {
-    const wards = await this.ghnService.getWardsByDistrict(input.districtId);
+    const wards: WardResponse[] = await this.ghnService.getWardsByDistrict(
+      input.districtId,
+    );
     const ward = wards.find((w) => w.WardCode === input.wardCode);
     if (!ward) {
       throw new NotFoundException('Phường/Xã không tồn tại');
     }
-    return ward;
+    return {
+      WardCode: ward.WardCode,
+      WardName: ward.WardName,
+      DistrictID: ward.DistrictID,
+    };
   }
 
   async create(
@@ -52,7 +58,7 @@ export class AddressService {
         throw new NotFoundException('Quận/Huyện không tồn tại');
       }
 
-      const ward = await this.resolveWardFromApi({
+      const ward: WardResponse = await this.resolveWardFromApi({
         districtId: createAddressDto.districtId,
         wardCode: createAddressDto.wardCode,
       });
@@ -70,7 +76,7 @@ export class AddressService {
         userId,
       });
 
-      return { ...address, ward };
+      return { ...address, ward } as AddressResponseDTO;
     } catch (error) {
       this.logger.error('Error occurred while creating address', error);
       throw error;
@@ -84,17 +90,31 @@ export class AddressService {
     return Promise.all(
       addresses.map(async (address) => {
         const districtId = address.district.DistrictID;
-        const cached = wardCache.get(districtId);
-        const wards =
-          cached ?? (await this.ghnService.getWardsByDistrict(districtId));
-        if (!cached) {
+
+        // Lấy dữ liệu từ cache hoặc gọi API
+        let wards = wardCache.get(districtId);
+        if (!wards) {
+          wards = await this.ghnService.getWardsByDistrict(districtId);
           wardCache.set(districtId, wards);
         }
-        const ward = wards.find((w) => w.WardCode === address.wardCode);
-        if (!ward) {
-          throw new NotFoundException('Phường/Xã không tồn tại');
+
+        const foundWard = wards.find((w) => w.WardCode === address.wardCode);
+
+        if (!foundWard) {
+          throw new NotFoundException(
+            `Phường/Xã với mã ${address.wardCode} không tồn tại`,
+          );
         }
-        return { ...address, ward };
+
+        // Format lại dữ liệu trả về đúng kiểu WardResponse (Viết Hoa)
+        return {
+          ...address,
+          ward: {
+            WardCode: foundWard.WardCode,
+            WardName: foundWard.WardName,
+            DistrictID: foundWard.DistrictID,
+          },
+        } as AddressResponseDTO;
       }),
     );
   }
@@ -110,7 +130,7 @@ export class AddressService {
       wardCode: address.wardCode,
     });
 
-    return { ...address, ward };
+    return { ...address, ward } as AddressResponseDTO;
   }
 
   async findOneForUser(

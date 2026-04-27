@@ -11,6 +11,7 @@ import { OrderPaymentMethod, OrderStatus } from 'generated/prisma/enums';
 
 import { CartsService } from '../carts/carts.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { BookService } from '../book/book.service';
 import { PromotionService } from '../promotion/promotion.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
@@ -21,6 +22,8 @@ import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
 import { VouchersService } from '../vouchers/vouchers.service';
 import { AddressService } from '../address/address.service';
+import { GhnService } from '../ghn/ghn.service';
+import { GhnCalculateFeeRequestDto } from '../ghn/dto/calculate-fee.request.dto';
 
 type OrderItemPayload = {
   bookId: string;
@@ -40,8 +43,10 @@ export class OrdersService {
     private readonly addressService: AddressService,
     private readonly cartsService: CartsService,
     private readonly inventoryService: InventoryService,
+    private readonly bookService: BookService,
     private readonly promotionService: PromotionService,
     private readonly vouchersService: VouchersService,
+    private readonly ghnService: GhnService, // gọi này để tính phí ship
     private readonly prisma: PrismaService,
   ) {}
 
@@ -126,9 +131,66 @@ export class OrdersService {
         request.addressId,
         user.userId,
       );
-      // // Giả sử bạn có service tính phí ship, đừng tin request.shippingFee hoàn toàn
-      //     const shippingFee = await this.shippingService.calculateFee(address);
-      const shippingFee = request.shippingFee ?? 0; // nên lấy giá ship của api ghn trả về
+
+      console.log('Địa chỉ giao hàng:', address);
+
+      // 1. Tính trước voucher (nếu có) ở ngoài transaction
+      let anticipatedVoucherDiscount = 0;
+      if (request.voucherCode) {
+        const amountForVoucher = Math.max(
+          0,
+          subtotalAmount - promotionDiscountAmount,
+        );
+        const { discountAmount } =
+          await this.vouchersService.validateVoucherForOrder({
+            code: request.voucherCode,
+            orderAmount: amountForVoucher,
+          });
+        anticipatedVoucherDiscount = discountAmount;
+      }
+
+      const finalDiscountAmount =
+        promotionDiscountAmount + anticipatedVoucherDiscount;
+
+      const amountBeforeShipping = Math.max(
+        0,
+        subtotalAmount - finalDiscountAmount,
+      );
+
+      // 2. Tính phí ship
+      // COD và "người nhận trả ship": GHN có thể tính thêm COD fee dựa trên cod_value.
+      // Để ra phí chính xác và tránh vòng phụ thuộc, gọi GHN 2 lần:
+      //  - Lần 1: cod_value = 0 => lấy ship cơ bản
+      //  - Lần 2 (COD): cod_value = tiền hàng sau giảm + ship cơ bản => lấy ship cuối
+      const baseCalculateFee: Omit<GhnCalculateFeeRequestDto, 'cod_value'> = {
+        // sau này nếu sử dụng dịch vụ chính thức của GHN có thể sửa lại code vd như trở thành khách hàng thì giá sẽ đc có định
+        to_district_id: address.district.DistrictID,
+        to_ward_code: address.ward.WardCode,
+        weight: items.reduce((sum, item) => sum + item.quantity * 300, 0),
+        insurance_value: subtotalAmount - promotionDiscountAmount,
+        height: 10,
+        length: 10,
+        width: 10,
+      };
+
+      // không tính phí ship ở đây nữa mà tính ở chỗ khác còn đây là tạo đơn luôn
+      let shippingFeeObj = await this.ghnService.calculateShippingFee({
+        ...baseCalculateFee,
+        cod_value: 0,
+      });
+      let shippingFee = shippingFeeObj?.total ?? 0;
+
+      if (request.paymentMethod === OrderPaymentMethod.COD) {
+        const codValue = amountBeforeShipping + shippingFee;
+        shippingFeeObj = await this.ghnService.calculateShippingFee({
+          ...baseCalculateFee,
+          cod_value: codValue,
+        });
+        shippingFee = shippingFeeObj?.total ?? 0;
+      }
+
+      console.log('Phí vận chuyển tính từ GHN:', shippingFeeObj);
+
       const orderCode = this.generateOrderCode();
 
       const createdOrder = await this.prisma.$transaction(async (tx) => {
@@ -141,7 +203,6 @@ export class OrdersService {
             subtotalAmount - promotionDiscountAmount,
           );
           const voucherResult = await this.vouchersService.applyVoucherForOrder(
-            // sửa lại cái service này 1 user chỉ đc sử dụng voucher 1 lần thôi
             tx,
             {
               code: request.voucherCode,
@@ -153,10 +214,10 @@ export class OrdersService {
           voucherDiscountAmount = voucherResult.discountAmount;
         }
 
-        const finalDiscountAmount =
-          promotionDiscountAmount + voucherDiscountAmount;
-        const totalAmount = subtotalAmount - finalDiscountAmount + shippingFee;
+        const totalAmount = amountBeforeShipping + shippingFee;
 
+        // Xoá logic vi phạm cross-module dependency: cartItems, book soldCount nên được xử lý bởi Repository
+        // Nhưng tạm thời sửa theo ý user là "cod_value" trước.
         const order = await this.ordersRepository.create(tx, {
           code: orderCode,
           user: {
@@ -190,20 +251,32 @@ export class OrdersService {
         } as Prisma.OrderCreateInput);
 
         for (const item of items) {
-          await tx.inventory.update({
-            where: { bookId: item.bookId },
-            data: { quantity: { decrement: item.quantity } },
-          });
+          const updateStockCount =
+            await this.inventoryService.decrementStockByTx(
+              tx,
+              item.bookId,
+              item.quantity,
+            );
 
-          await tx.book.update({
-            where: { id: item.bookId },
-            data: { soldCount: { increment: item.quantity } },
-          });
+          if (updateStockCount === 0) {
+            throw new BadRequestException(
+              `Sách ${item.bookTitle} vừa hết hàng`,
+            );
+          }
+
+          // Trì hoãn việc update soldCount hoặc update qua BookService
+          await this.bookService.updateSoldCountByTx(
+            tx,
+            item.bookId,
+            item.quantity,
+          );
         }
 
-        await tx.cartItem.deleteMany({
-          where: { cartId: cart.id, id: { in: request.cardItemIds } },
-        });
+        await this.cartsService.deleteItemsByTx(
+          tx,
+          cart.id,
+          request.cardItemIds,
+        );
 
         return order;
       });

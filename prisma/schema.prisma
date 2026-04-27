@@ -386,4 +386,4 @@ model District {
   
   @@index([provinceId]) // Đánh index để filter huyện theo tỉnh nhanh hơn
 }
-//module reviews nữa sau, để khách hàng đánh giá sách đã mua, có thể thêm trường rating (1-5 sao) và comment. sau khi giao hành thành công
+

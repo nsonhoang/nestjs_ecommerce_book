@@ -44,10 +44,11 @@ export class CreateOrderRequestDto {
   @IsString()
   addressId!: string;
 
-  @IsInt({ message: 'Phí vận chuyển phải là số nguyên' })
-  @Min(0, { message: 'Phí vận chuyển không được âm' })
-  @IsOptional()
-  shippingFee?: number;
+  // cái này tính bàng api ghn trả về, đừng tin tưởng client gửi lên
+  // @IsInt({ message: 'Phí vận chuyển phải là số nguyên' })
+  // @Min(0, { message: 'Phí vận chuyển không được âm' })
+  // @IsOptional()
+  // shippingFee?: number;
 
   @IsString()
   @IsOptional()

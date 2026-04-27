@@ -52,6 +52,7 @@ export class AddressRequestDTO {
   @IsString()
   country?: string;
 
+  // Nhãn địa chỉ (ví dụ: "Nhà", "Cơ quan", "Khác")
   @IsOptional()
   @IsString()
   @MaxLength(50)

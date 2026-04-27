@@ -20,11 +20,24 @@ import {
 } from './dto/inventory.response.dto';
 import { InventoryLogType } from 'generated/prisma/enums';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
+import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
   constructor(private readonly inventoryRepository: InventoryRepository) {}
+
+  async decrementStockByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<number> {
+    return await this.inventoryRepository.decrementStockByTx(
+      tx,
+      bookId,
+      quantity,
+    );
+  }
 
   async create(createInventoryDto: InventoryRequestDto) {
     try {

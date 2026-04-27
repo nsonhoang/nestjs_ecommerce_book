@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from 'generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   DeleteCartItemRequestDto,
@@ -183,6 +184,17 @@ export class CartRepository {
       where: { cartId: cart.id },
     });
 
+    return result.count;
+  }
+
+  async deleteItemsByTx(
+    tx: Prisma.TransactionClient,
+    cartId: string,
+    itemIds: string[],
+  ): Promise<number> {
+    const result = await tx.cartItem.deleteMany({
+      where: { cartId: cartId, id: { in: itemIds } },
+    });
     return result.count;
   }
 
