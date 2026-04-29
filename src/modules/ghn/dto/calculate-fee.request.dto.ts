@@ -1,5 +1,3 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-
 export class GhnCalculateFeeRequestDto {
   from_district_id?: number; // Không bắt buộc nếu đã cấu hình ShopId mặc định
   from_ward_code?: string;

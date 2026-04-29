@@ -299,10 +299,15 @@ model Order {
   shippingPhone    String
   shippingAddress  String
   shippingWard     String
+  // GHN identifiers snapshot (để tạo đơn GHN khi chuyển trạng thái PROCESSING)
+  shippingWardCode String?
   shippingDistrict String
+  shippingDistrictId Int?
   shippingCity     String
   shippingCountry  String            @default("Vietnam")
   note             String?
+      
+  shipment         Shipment?        
   items            OrderItem[]
   voucherId        String?           // Mã giảm giá áp dụng cho đơn hàng (nếu có)
   voucher          Voucher?          @relation(fields: [voucherId], references: [id], onDelete: SetNull)
@@ -387,3 +392,27 @@ model District {
   @@index([provinceId]) // Đánh index để filter huyện theo tỉnh nhanh hơn
 }
 
+model Shipment { // cái này tương tác trực tiếp với GHN để quản lý đơn hàng vận chuyển, có thể mở rộng thêm để hỗ trợ nhiều đối tác vận chuyển khác trong tương lai
+  id              String   @id @default(uuid())
+  orderId         String   @unique // Một đơn hàng thường đi kèm 1 thông tin vận chuyển
+  order           Order    @relation(fields: [orderId], references: [id])
+  
+  // Thông tin từ phía đối tác vận chuyển (GHN)
+  ghnOrderCode    String?  @unique // Mã đơn hàng do GHN cấp (Z82BS)
+  shippingService String   @default("GHN") 
+  
+  // Trạng thái vận chuyển (nên đồng bộ với Webhook của GHN)
+  status          String   @default("ready_to_pick") 
+  
+  // Thông tin tài chính thực tế khi giao
+  codAmount       Float    // Số tiền thực tế bưu tá cần thu
+  shippingFee     Float    // Phí ship thực tế GHN thu của shop
+  
+  // Thông tin thời gian
+  expectedDelivery DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

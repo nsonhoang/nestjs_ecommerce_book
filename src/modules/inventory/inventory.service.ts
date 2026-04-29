@@ -116,6 +116,14 @@ export class InventoryService {
       throw new InternalServerErrorException('Lỗi khi tìm kiếm kho');
     }
   }
+  async findByBookIds(bookIds: string[]): Promise<InventoryResponseDto[]> {
+    try {
+      return await this.inventoryRepository.findByBookIds(bookIds);
+    } catch (error) {
+      this.logger.error('Lỗi khi tìm kiếm kho theo bookIds', error);
+      throw new InternalServerErrorException('Lỗi khi tìm kiếm kho');
+    }
+  }
 
   async update(
     id: string,

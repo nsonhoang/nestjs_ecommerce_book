@@ -23,7 +23,10 @@ import { PaginateOrderDto } from './dto/pagination-orders.dto';
 import { VouchersService } from '../vouchers/vouchers.service';
 import { AddressService } from '../address/address.service';
 import { GhnService } from '../ghn/ghn.service';
-import { GhnCalculateFeeRequestDto } from '../ghn/dto/calculate-fee.request.dto';
+import { IGhnCreateOrderRequest } from '../ghn/ghn.interface';
+
+import { ShipmentsService } from '../shipments/shipments.service';
+import { CartItemResponseDto } from '../carts/dto/cart.response.dto';
 
 type OrderItemPayload = {
   bookId: string;
@@ -38,6 +41,11 @@ type OrderItemPayload = {
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
+  private buildTotalWeight(items: OrderItemPayload[]): number {
+    // Tạm tính 300g / quyển (có thể chuyển sang lấy từ Book/Inventory sau)
+    return items.reduce((sum, item) => sum + item.quantity * 300, 0);
+  }
+
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly addressService: AddressService,
@@ -47,6 +55,7 @@ export class OrdersService {
     private readonly promotionService: PromotionService,
     private readonly vouchersService: VouchersService,
     private readonly ghnService: GhnService, // gọi này để tính phí ship
+    private readonly shipmentsService: ShipmentsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -86,46 +95,15 @@ export class OrdersService {
         }
       }
 
-      const items: OrderItemPayload[] = [];
-      let subtotalAmount = 0;
-      let promotionDiscountAmount = 0;
+      // const itemsOrder: OrderItemPayload[] = [];
 
-      for (const cartItem of filteredItems) {
-        const inventory = await this.inventoryService.findByBookId(
-          cartItem.book.id,
+      const { items, subtotalAmount, promotionDiscountAmount } =
+        await this.validateAndPrepareOrderItems(
+          filteredItems,
+          promotionLookup,
+          // subtotalAmountValue,
+          // promotionDiscountAmountValue,
         );
-        if (!inventory) {
-          throw new BadRequestException(
-            `Sách ${cartItem.book.title} không tồn tại trong kho`,
-          );
-        }
-        if (inventory.quantity < cartItem.quantity) {
-          throw new BadRequestException(
-            `Sách ${cartItem.book.title} không đủ hàng trong kho`,
-          );
-        }
-
-        //lấy địa chỉ giao hàng
-
-        const unitPrice = Number(cartItem.book.price);
-        const itemSubtotal = unitPrice * cartItem.quantity;
-        const itemDiscountRate = promotionLookup.get(cartItem.book.id) ?? 0;
-        const itemDiscountAmount = Math.floor(
-          (itemSubtotal * itemDiscountRate) / 100,
-        );
-        const itemTotalAmount = itemSubtotal - itemDiscountAmount;
-
-        subtotalAmount += itemSubtotal;
-        promotionDiscountAmount += itemDiscountAmount;
-        items.push({
-          bookId: cartItem.book.id,
-          bookTitle: cartItem.book.title,
-          quantity: cartItem.quantity,
-          unitPrice,
-          discountAmount: itemDiscountAmount,
-          totalAmount: itemTotalAmount,
-        });
-      }
 
       const address = await this.addressService.findOneForUser(
         request.addressId,
@@ -134,64 +112,9 @@ export class OrdersService {
 
       console.log('Địa chỉ giao hàng:', address);
 
-      // 1. Tính trước voucher (nếu có) ở ngoài transaction
-      let anticipatedVoucherDiscount = 0;
-      if (request.voucherCode) {
-        const amountForVoucher = Math.max(
-          0,
-          subtotalAmount - promotionDiscountAmount,
-        );
-        const { discountAmount } =
-          await this.vouchersService.validateVoucherForOrder({
-            code: request.voucherCode,
-            orderAmount: amountForVoucher,
-          });
-        anticipatedVoucherDiscount = discountAmount;
-      }
-
-      const finalDiscountAmount =
-        promotionDiscountAmount + anticipatedVoucherDiscount;
-
-      const amountBeforeShipping = Math.max(
-        0,
-        subtotalAmount - finalDiscountAmount,
-      );
-
-      // 2. Tính phí ship
-      // COD và "người nhận trả ship": GHN có thể tính thêm COD fee dựa trên cod_value.
-      // Để ra phí chính xác và tránh vòng phụ thuộc, gọi GHN 2 lần:
-      //  - Lần 1: cod_value = 0 => lấy ship cơ bản
-      //  - Lần 2 (COD): cod_value = tiền hàng sau giảm + ship cơ bản => lấy ship cuối
-      const baseCalculateFee: Omit<GhnCalculateFeeRequestDto, 'cod_value'> = {
-        // sau này nếu sử dụng dịch vụ chính thức của GHN có thể sửa lại code vd như trở thành khách hàng thì giá sẽ đc có định
-        to_district_id: address.district.DistrictID,
-        to_ward_code: address.ward.WardCode,
-        weight: items.reduce((sum, item) => sum + item.quantity * 300, 0),
-        insurance_value: subtotalAmount - promotionDiscountAmount,
-        height: 10,
-        length: 10,
-        width: 10,
-      };
-
-      // không tính phí ship ở đây nữa mà tính ở chỗ khác còn đây là tạo đơn luôn
-      let shippingFeeObj = await this.ghnService.calculateShippingFee({
-        ...baseCalculateFee,
-        cod_value: 0,
-      });
-      let shippingFee = shippingFeeObj?.total ?? 0;
-
-      if (request.paymentMethod === OrderPaymentMethod.COD) {
-        const codValue = amountBeforeShipping + shippingFee;
-        shippingFeeObj = await this.ghnService.calculateShippingFee({
-          ...baseCalculateFee,
-          cod_value: codValue,
-        });
-        shippingFee = shippingFeeObj?.total ?? 0;
-      }
-
-      console.log('Phí vận chuyển tính từ GHN:', shippingFeeObj);
-
       const orderCode = this.generateOrderCode();
+
+      //vẩn phải tính thêm phí ship ở đây không lưu vào database chỉ cần
 
       const createdOrder = await this.prisma.$transaction(async (tx) => {
         let voucherId: string | undefined;
@@ -214,26 +137,39 @@ export class OrdersService {
           voucherDiscountAmount = voucherResult.discountAmount;
         }
 
-        const totalAmount = amountBeforeShipping + shippingFee;
+        /// tách logic ra
+        const discountAmountInTx =
+          promotionDiscountAmount + voucherDiscountAmount;
+        const amountBeforeShippingInTx = Math.max(
+          0,
+          subtotalAmount - discountAmountInTx,
+        );
+
+        // Tạo order trước (chưa tạo shipment/ship fee).
+        // NOTE: Đơn GHN + Shipment record sẽ được tạo khi cập nhật status sang PROCESSING.
+        const shippingFee = 0;
+        const totalAmount = amountBeforeShippingInTx + shippingFee;
 
         // Xoá logic vi phạm cross-module dependency: cartItems, book soldCount nên được xử lý bởi Repository
         // Nhưng tạm thời sửa theo ý user là "cod_value" trước.
         const order = await this.ordersRepository.create(tx, {
-          code: orderCode,
+          code: orderCode, // cái này để hỗ trợ tìm kiếm đơn hàng
           user: {
             connect: { id: user.userId },
           },
           status: OrderStatus.PENDING,
           paymentMethod: request.paymentMethod || OrderPaymentMethod.COD,
           subtotalAmount,
-          discountAmount: finalDiscountAmount,
+          discountAmount: discountAmountInTx,
           shippingFee,
           totalAmount,
           shippingName: address.fullName,
           shippingPhone: address.phone,
           shippingAddress: address.addressLine,
           shippingWard: address.ward.WardName,
+          shippingWardCode: address.ward.WardCode,
           shippingDistrict: address.district.DistrictName,
+          shippingDistrictId: address.district.DistrictID,
           shippingCity: address.province.ProvinceName,
           shippingCountry: address.country ?? 'Vietnam',
           note: request.note,
@@ -281,6 +217,8 @@ export class OrdersService {
         return order;
       });
 
+      // NOTE: Không tạo đơn GHN ở đây nữa.
+      // Đơn GHN + record Shipment sẽ được tạo khi người bán/admin cập nhật trạng thái sang PROCESSING.
       return this.mapOrder(createdOrder);
     } catch (error) {
       this.logger.error('Lỗi khi tạo order', error);
@@ -342,6 +280,222 @@ export class OrdersService {
   ): Promise<PaginatedResult<OrderResponseDto>> {
     delete paginationQuery.userId;
     return this.ordersRepository.findByFilter({ ...paginationQuery, userId });
+  }
+
+  //nếu chuyển trang thái sang processing thì sẽ tạo đơn hàng vận chuyển, trạng thái ban đầu là pending,
+  //  sau đó khi ghn gửi web hook về thì sẽ cập nhật trạng thái đơn hàng vận chuyển tương ứng
+  async updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+  ): Promise<OrderResponseDto> {
+    const order = await this.ordersRepository.findById(orderId);
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    // Chỉ tạo shipment khi chuyển sang PROCESSING (người bán/admin xác nhận đơn)
+    if (status !== OrderStatus.PROCESSING) {
+      return await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status },
+        include: { items: true },
+      });
+    }
+
+    // Idempotent: nếu đã có shipment thì chỉ update status
+    const existingShipment =
+      await this.shipmentsService.getShipmentByOrderId(orderId);
+    if (existingShipment) {
+      return await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status },
+        include: { items: true },
+      });
+    }
+
+    const amountBeforeShipping = Math.max(
+      0,
+      order.subtotalAmount - order.discountAmount,
+    );
+
+    if (!order.shippingWardCode || !order.shippingDistrictId) {
+      throw new BadRequestException(
+        'Thiếu shippingWardCode/shippingDistrictId để tạo đơn GHN. Vui lòng đặt lại đơn với địa chỉ hợp lệ.',
+      );
+    }
+
+    const ghnCreatePayload: IGhnCreateOrderRequest = {
+      payment_type_id: 2, // 2: Khách trả phí ship
+      note: order.note ?? '',
+      required_note: 'KHONGCHOXEMHANG',
+      client_order_code: order.code,
+      to_name: order.shippingName,
+      to_phone: order.shippingPhone,
+      to_address: order.shippingAddress,
+      // Dùng snapshot GHN identifiers đã lưu ở Order lúc checkout
+      to_ward_code: order.shippingWardCode,
+      to_district_id: order.shippingDistrictId,
+      cod_amount:
+        order.paymentMethod === OrderPaymentMethod.COD
+          ? amountBeforeShipping
+          : 0,
+      content: 'Book order',
+      weight: this.buildTotalWeight(
+        order.items.map((i) => ({
+          bookId: i.bookId,
+          bookTitle: i.bookTitle,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          discountAmount: i.discountAmount,
+          totalAmount: i.totalAmount,
+        })),
+      ),
+      length: 10,
+      width: 10,
+      height: 10,
+      service_type_id: 2,
+      insurance_value: amountBeforeShipping,
+      items: order.items.map((item) => ({
+        name: item.bookTitle,
+        code: item.bookId,
+        quantity: item.quantity,
+        price: item.unitPrice,
+      })),
+    };
+
+    // NOTE: Gọi GHN ở đây (khi chuyển PROCESSING) để tránh tạo shipment sớm.
+    const ghnOrder =
+      await this.ghnService.createShippingOrder(ghnCreatePayload);
+    const shippingFee = Math.round(
+      ghnOrder.total_fee ?? ghnOrder.fee?.total ?? 0,
+    );
+    const totalAmount = amountBeforeShipping + shippingFee;
+
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      await this.shipmentsService.createShipment(
+        {
+          orderId: orderId,
+          ghnOrderCode: ghnOrder.order_code,
+          codAmount:
+            order.paymentMethod === OrderPaymentMethod.COD
+              ? amountBeforeShipping
+              : 0,
+          shippingFee,
+          expectedDelivery: ghnOrder.expected_delivery_time
+            ? new Date(ghnOrder.expected_delivery_time)
+            : undefined,
+        },
+        tx,
+      );
+
+      return await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.PROCESSING,
+          shippingFee,
+          totalAmount,
+        },
+        include: { items: true },
+      });
+    });
+
+    return this.mapOrder(updatedOrder);
+  }
+
+  // hàm này để kiểm tra và tính tiền tiền của  item
+  //  for (const cartItem of filteredItems) {
+  //       const inventory = await this.inventoryService.findByBookId(
+  //         // sửa thành find many tránh n+1 query
+  //         cartItem.book.id,
+  //       );
+  //       if (!inventory) {
+  //         throw new BadRequestException(
+  //           `Sách ${cartItem.book.title} không tồn tại trong kho`,
+  //         );
+  //       }
+  //       if (inventory.quantity < cartItem.quantity) {
+  //         throw new BadRequestException(
+  //           `Sách ${cartItem.book.title} không đủ hàng trong kho`,
+  //         );
+  //       }
+
+  //       // đoạn này tách nhỏ hàm ra để dễ quản lí hơn, tránh việc service phải xử lí quá nhiều logic, nên tách biệt hẳn repository để dễ quản lí transaction, tránh việc service phải gọi nhiều repository
+  //       const unitPrice = Number(cartItem.book.price);
+  //       const itemSubtotal = unitPrice * cartItem.quantity;
+  //       const itemDiscountRate = promotionLookup.get(cartItem.book.id) ?? 0;
+  //       const itemDiscountAmount = Math.floor(
+  //         (itemSubtotal * itemDiscountRate) / 100,
+  //       );
+  //       const itemTotalAmount = itemSubtotal - itemDiscountAmount;
+
+  //       subtotalAmount += itemSubtotal;
+  //       promotionDiscountAmount += itemDiscountAmount;
+  //       items.push({
+  //         bookId: cartItem.book.id,
+  //         bookTitle: cartItem.book.title,
+  //         quantity: cartItem.quantity,
+  //         unitPrice,
+  //         discountAmount: itemDiscountAmount,
+  //         totalAmount: itemTotalAmount,
+  //       });
+  //     }
+
+  private async validateAndPrepareOrderItems(
+    filteredItems: CartItemResponseDto[],
+    promotionLookup: Map<string, number>,
+    // subtotalAmount: number,
+    // promotionDiscountAmount: number,
+  ): Promise<{
+    items: OrderItemPayload[];
+    subtotalAmount: number;
+    promotionDiscountAmount: number;
+  }> {
+    //lấy bookId lưu ra thành mảng
+    let subtotalAmount = 0;
+    let promotionDiscountAmount = 0;
+    const bookIds = filteredItems.map((item) => item.book.id);
+    //tìm kho theo Id sách
+    const inventories = await this.inventoryService.findByBookIds(bookIds);
+
+    const items: OrderItemPayload[] = [];
+
+    for (const cartItem of filteredItems) {
+      const inventory = inventories.find(
+        (inv) => inv.book.id === cartItem.book.id,
+      );
+
+      if (!inventory) {
+        throw new BadRequestException(
+          `Sách ${cartItem.book.title} không tồn tại trong kho`,
+        );
+      }
+      if (inventory.quantity < cartItem.quantity) {
+        throw new BadRequestException(
+          `Sách ${cartItem.book.title} không đủ hàng trong kho`,
+        );
+      }
+      const unitPrice = Number(cartItem.book.price);
+      const itemSubtotal = unitPrice * cartItem.quantity;
+      const itemDiscountRate = promotionLookup.get(cartItem.book.id) ?? 0;
+      const itemDiscountAmount = Math.floor(
+        (itemSubtotal * itemDiscountRate) / 100,
+      );
+      const itemTotalAmount = itemSubtotal - itemDiscountAmount;
+
+      subtotalAmount += itemSubtotal;
+      promotionDiscountAmount += itemDiscountAmount;
+
+      items.push({
+        bookId: cartItem.book.id,
+        bookTitle: cartItem.book.title,
+        quantity: cartItem.quantity,
+        unitPrice,
+        discountAmount: itemDiscountAmount,
+        totalAmount: itemTotalAmount,
+      });
+    }
+    return { items, subtotalAmount, promotionDiscountAmount };
+    // kiểm tra nếu có sách nào trong giỏ hàng mà số lượng trong kho không đủ thì sẽ báo lỗi
   }
 
   private generateOrderCode(): string {

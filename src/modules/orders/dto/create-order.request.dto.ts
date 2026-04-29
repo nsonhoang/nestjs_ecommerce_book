@@ -1,10 +1,8 @@
 import {
   IsEnum,
-  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
-  Min,
   MaxLength,
 } from 'class-validator';
 import { OrderPaymentMethod } from 'generated/prisma/enums';

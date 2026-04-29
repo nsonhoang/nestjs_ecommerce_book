@@ -14,6 +14,11 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { GhnRepository } from './ghn.repository';
 import { GhnCalculateFeeRequestDto } from './dto/calculate-fee.request.dto';
 import { ShippingFeeResponseDto } from './dto/calculate-fee.response.dto';
+import {
+  IGhnCreateOrderRequest,
+  IGhnCreateOrderResponse,
+} from './ghn.interface';
+import { GhnCalculateShippingRequestDto } from './dto/calculate-shipping.request.dto';
 
 @Injectable()
 export class GhnService {
@@ -129,7 +134,7 @@ export class GhnService {
     );
     return response.data.data;
   }
-
+  // sao khong lấy address ID
   async calculateShippingFee(
     payload: GhnCalculateFeeRequestDto,
   ): Promise<ShippingFeeResponseDto> {
@@ -158,5 +163,65 @@ export class GhnService {
       insurance_fee: 0, // GHN không trả về phí bảo hiểm riêng, nên tạm để 0
       display_fee: `${response.data.data.total.toLocaleString('vi-VN')}đ`, // Định dạng số thành chuỗi có dấu phân cách hàng nghìn và thêm "đ"
     };
+  }
+
+  /**
+   * Tính phí ship cho UI checkout.
+   * - Nếu COD (người nhận trả ship): gọi 2 lần để cod_value bao gồm ship cơ bản.
+   * - Nếu không COD: gọi 1 lần với cod_value=0.
+   */
+  async calculateShippingForCheckout(
+    body: GhnCalculateShippingRequestDto,
+  ): Promise<number> {
+    const insuranceValue = body.insurance_value ?? body.orderAmount;
+
+    const base: Omit<GhnCalculateFeeRequestDto, 'cod_value'> = {
+      to_district_id: body.to_district_id,
+      to_ward_code: body.to_ward_code,
+      weight: body.weight,
+      height: body.height,
+      length: body.length,
+      width: body.width,
+      insurance_value: insuranceValue,
+      coupon: body.coupon,
+    };
+
+    // Lần 1: ship cơ bản (không COD fee)
+    const baseFeeObj = await this.calculateShippingFee({
+      ...base,
+      cod_value: 0,
+    });
+    const baseFee = baseFeeObj?.total ?? 0;
+
+    if (body.paymentMethod !== 'COD') {
+      return baseFee;
+    }
+
+    // Lần 2: COD thu cả tiền hàng + ship cơ bản
+    const codValue = Math.max(0, body.orderAmount + baseFee);
+    const finalFeeObj = await this.calculateShippingFee({
+      ...base,
+      cod_value: codValue,
+    });
+
+    return finalFeeObj?.total ?? 0;
+  }
+
+  async createShippingOrder(
+    createOrderRequest: IGhnCreateOrderRequest,
+  ): Promise<IGhnCreateOrderResponse> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post<IGhnResponse<IGhnCreateOrderResponse>>(
+          `${this.baseUrl}/v2/shipping-order/create`,
+          createOrderRequest,
+          { headers: this.headers },
+        ),
+      );
+      return response.data.data;
+    } catch (error) {
+      this.logger.error('Lỗi khi tạo đơn hàng GHN', error);
+      throw error;
+    }
   }
 }

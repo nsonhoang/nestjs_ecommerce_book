@@ -10,6 +10,7 @@ import { OrdersController } from './orders.controller';
 import { OrdersRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
 import { GhnModule } from '../ghn/ghn.module';
+import { ShipmentsModule } from '../shipments/shipments.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { GhnModule } from '../ghn/ghn.module';
     PromotionModule,
     VouchersModule,
     GhnModule,
+    ShipmentsModule,
     BookModule,
   ],
   controllers: [OrdersController],

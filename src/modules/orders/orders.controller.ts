@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -19,6 +20,10 @@ import { OrderResponseDto } from './dto/order.response.dto';
 import { OrdersService } from './orders.service';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { UpdateOrderStatusRequestDto } from './dto/update-order-status.request.dto';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { AuthRole } from '../roles/roles.enum';
 
 export type RequestWithUser = Request & { user: JwtUser };
 
@@ -71,13 +76,16 @@ export class OrdersController {
 
   //còn 1 hàm là update status nữa
 
-  async updateStatus() {
-    // nếu ở pending thì có thể hủy đơn hàng
-    // có thể hủy đơn hàng nếu đang ở trạng thái PENDING ,còn ở trạng thái PROCESSING thì không ,
-    //  nếu có module shipment khi orderId này cí liên quan đến shipment rồi thì trạng thái đơn hàng
-    // sẽ chuyển sang shipping (cái này có thể xử lí bên module shipment luôn cũng được)
-    // đã giao hàng sẽ đc cập thông qua shipment luôn , người dùng sau đó có thể returning hàng , sau đó admin sẽ xác nhận REFUNDED
+  @Patch('/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  async updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateOrderStatusRequestDto,
+  ): Promise<ApiResponse<OrderResponseDto>> {
+    // NOTE: Endpoint này dành cho người bán/admin xác nhận đơn.
+    // Khi chuyển sang PROCESSING, OrdersService sẽ tạo đơn GHN + Shipment record.
+    const order = await this.ordersService.updateOrderStatus(id, body.status);
+    return ApiResponse.ok(order, 'Cập nhật trạng thái đơn hàng thành công');
   }
-
-  //update status for admin, còn user thì chỉ đc hủy đơn hàng khi đang ở trạng thái pending thôi, còn lại là ko đc phép update status
 }

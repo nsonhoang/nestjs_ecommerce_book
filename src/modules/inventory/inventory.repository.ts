@@ -120,6 +120,21 @@ export class InventoryRepository {
     });
   }
 
+  async findByBookIds(bookIds: string[]): Promise<InventoryResponseDto[]> {
+    return this.prisma.inventory.findMany({
+      where: { bookId: { in: bookIds } },
+      select: {
+        id: true,
+        book: {
+          select: { id: true, title: true, thumbnail: true, price: true },
+        },
+        quantity: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async update(
     id: string,
     data: UpdateInventoryDto,

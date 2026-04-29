@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiResponse } from 'src/common/api-response';
 
 import { GhnService } from './ghn.service';
@@ -8,6 +8,7 @@ import {
   ProvinceResponse,
   WardResponse,
 } from './dto/ghn.response.dto';
+import { GhnCalculateShippingRequestDto } from './dto/calculate-shipping.request.dto';
 
 @Controller('/v1/ghn')
 export class GhnController {
@@ -35,5 +36,14 @@ export class GhnController {
   ): Promise<ApiResponse<WardResponse[]>> {
     const wards = await this.ghnService.getWardsByDistrict(query.districtId);
     return ApiResponse.ok(wards, 'Lấy danh sách phường/xã thành công');
+  }
+
+  @Post('calculate-shipping')
+  async calculateShipping(
+    @Body() body: GhnCalculateShippingRequestDto,
+  ): Promise<ApiResponse<{ shippingFee: number }>> {
+    const shippingFee =
+      await this.ghnService.calculateShippingForCheckout(body);
+    return ApiResponse.ok({ shippingFee }, 'Tính phí vận chuyển thành công');
   }
 }

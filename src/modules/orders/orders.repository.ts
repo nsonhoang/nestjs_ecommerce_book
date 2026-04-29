@@ -9,6 +9,7 @@ import { buildMeta, getPagination } from 'src/utils/pagination.util';
 
 const orderInclude = {
   items: true,
+  shipment: true,
 } as const;
 
 @Injectable()
