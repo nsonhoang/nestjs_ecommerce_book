@@ -3,6 +3,12 @@ import { ShipmentsRepository } from './shipments.repository';
 import { ShipmentRequestDto } from './dto/shipments.request.dto';
 import { OrderStatus, Prisma } from 'generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginateShipmentsDto } from './dto/paginate-shipments.dto';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
+
+type ShipmentWithOrder = Prisma.ShipmentGetPayload<{
+  include: { order: true };
+}>;
 
 @Injectable()
 export class ShipmentsService {
@@ -127,9 +133,11 @@ export class ShipmentsService {
     }
   }
 
-  async getAllShipments() {
+  async getAllShipments(
+    query: PaginateShipmentsDto,
+  ): Promise<PaginatedResult<ShipmentWithOrder>> {
     try {
-      return await this.shipmentsRepository.getAllShipments();
+      return await this.shipmentsRepository.getAllShipments(query);
     } catch (error) {
       this.logger.error('Failed to get all shipments', error);
       throw error;
