@@ -7,11 +7,13 @@ import { GhnService } from './ghn.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { GhnRepository } from './ghn.repository';
 import { GhnController } from './ghn.controller';
+import { ShipmentsModule } from '../shipments/shipments.module';
 
 @Module({
   imports: [
     // Cấu hình HttpModule với Timeout và MaxRedirects
     PrismaModule,
+    ShipmentsModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],
       useFactory: () => ({

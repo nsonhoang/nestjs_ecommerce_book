@@ -403,42 +403,6 @@ export class OrdersService {
   }
 
   // hàm này để kiểm tra và tính tiền tiền của  item
-  //  for (const cartItem of filteredItems) {
-  //       const inventory = await this.inventoryService.findByBookId(
-  //         // sửa thành find many tránh n+1 query
-  //         cartItem.book.id,
-  //       );
-  //       if (!inventory) {
-  //         throw new BadRequestException(
-  //           `Sách ${cartItem.book.title} không tồn tại trong kho`,
-  //         );
-  //       }
-  //       if (inventory.quantity < cartItem.quantity) {
-  //         throw new BadRequestException(
-  //           `Sách ${cartItem.book.title} không đủ hàng trong kho`,
-  //         );
-  //       }
-
-  //       // đoạn này tách nhỏ hàm ra để dễ quản lí hơn, tránh việc service phải xử lí quá nhiều logic, nên tách biệt hẳn repository để dễ quản lí transaction, tránh việc service phải gọi nhiều repository
-  //       const unitPrice = Number(cartItem.book.price);
-  //       const itemSubtotal = unitPrice * cartItem.quantity;
-  //       const itemDiscountRate = promotionLookup.get(cartItem.book.id) ?? 0;
-  //       const itemDiscountAmount = Math.floor(
-  //         (itemSubtotal * itemDiscountRate) / 100,
-  //       );
-  //       const itemTotalAmount = itemSubtotal - itemDiscountAmount;
-
-  //       subtotalAmount += itemSubtotal;
-  //       promotionDiscountAmount += itemDiscountAmount;
-  //       items.push({
-  //         bookId: cartItem.book.id,
-  //         bookTitle: cartItem.book.title,
-  //         quantity: cartItem.quantity,
-  //         unitPrice,
-  //         discountAmount: itemDiscountAmount,
-  //         totalAmount: itemTotalAmount,
-  //       });
-  //     }
 
   private async validateAndPrepareOrderItems(
     filteredItems: CartItemResponseDto[],

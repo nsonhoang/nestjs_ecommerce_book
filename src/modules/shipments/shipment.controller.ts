@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { ShipmentsService } from './shipments.service';
 
 @Controller('/v1/shipments')
@@ -10,5 +10,15 @@ export class ShipmentsController {
   @Get()
   async getAllShipments() {
     return this.shipmentsService.getAllShipments();
+  }
+
+  @Get('/order/:orderId')
+  async getShipmentByOrderId(@Param('orderId') orderId: string) {
+    return this.shipmentsService.getShipmentByOrderId(orderId);
+  }
+
+  @Get('/:id')
+  async getShipmentById(@Param('id') id: string) {
+    return this.shipmentsService.getShipmentById(id);
   }
 }

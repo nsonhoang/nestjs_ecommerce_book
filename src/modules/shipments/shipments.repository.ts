@@ -23,6 +23,12 @@ export class ShipmentsRepository {
     return this.prisma.shipment.findUnique({ where: { orderId } });
   }
 
+  async findByGhnCode(ghnCode: string) {
+    return this.prisma.shipment.findUnique({
+      where: { ghnOrderCode: ghnCode },
+    });
+  }
+
   async findById(shipmentId: string) {
     return this.prisma.shipment.findUnique({ where: { id: shipmentId } });
   }
@@ -37,6 +43,18 @@ export class ShipmentsRepository {
     await this.prisma.shipment.update({
       where: { id: shipmentId },
       data: { status },
+    });
+  }
+
+  async updateByGhnCode(
+    ghnCode: string,
+    data: Prisma.ShipmentUpdateInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    await client.shipment.update({
+      where: { ghnOrderCode: ghnCode },
+      data,
     });
   }
 }
