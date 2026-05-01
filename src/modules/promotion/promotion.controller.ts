@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { PromotionService } from './promotion.service';
 
@@ -17,12 +18,18 @@ import { PromotionResponseDto } from './dto/promotion.response';
 import { PromotionUpdateRequestDto } from './dto/promotion-update.request.dto';
 import { PaginatePromotionDto } from './dto/pagination-promotion.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { AuthRole } from '../roles/roles.enum';
 
 @Controller('/v1/promotions')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async createPromotion(
     @Body() promotionData: PromotionRequestDto,
   ): Promise<ApiResponse<PromotionResponseDto>> {
@@ -57,6 +64,8 @@ export class PromotionController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async updatePromotion(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() promotionData: PromotionUpdateRequestDto,
@@ -85,6 +94,8 @@ export class PromotionController {
   }
 
   @Delete('/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async deletePromotion(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ApiResponse<unknown>> {

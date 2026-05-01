@@ -42,6 +42,8 @@ export class OrdersController {
   }
 
   @Get() //lấy tất cả đơn hàng, cái này phải filter
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async getOrders(
     @Query() paginationQuery: PaginateOrderDto,
   ): Promise<ApiResponse<PaginatedResult<OrderResponseDto>>> {

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { ApiResponse } from 'src/common/api-response';
@@ -13,6 +14,10 @@ import { AuthorService } from './author.service';
 import { AuthorRequestDto } from './dto/author.request.dto';
 import { AuthorResponseDto } from './dto/author.response.dto';
 import { AuthorUpdateRequestDto } from './dto/author-update.request.dto';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { AuthRole } from '../roles/roles.enum';
 
 @Controller('/v1/authors')
 export class AuthorController {
@@ -31,6 +36,8 @@ export class AuthorController {
   }
 
   @Post('')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async createAuthor(
     @Body() authorDto: AuthorRequestDto,
   ): Promise<ApiResponse<AuthorResponseDto>> {
@@ -39,12 +46,16 @@ export class AuthorController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async deleteAuthor(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     await this.authorService.deleteAuthor(id);
     return ApiResponse.message('Xóa tác giả thành công');
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async updateAuthor(
     @Param('id') id: string,
     @Body() authorDto: AuthorUpdateRequestDto,

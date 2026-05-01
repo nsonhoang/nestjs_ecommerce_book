@@ -11,6 +11,7 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 
@@ -22,6 +23,10 @@ import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateBookDto } from './dto/paginate-book.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { AuthRole } from '../roles/roles.enum';
 
 @Controller('/v1/books')
 export class BookController {
@@ -42,6 +47,8 @@ export class BookController {
   }
 
   @Post('')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   @UseInterceptors(FileInterceptor('file'))
   async createBook(
     @UploadedFile(
@@ -60,6 +67,8 @@ export class BookController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async updateBook(
     @Param('id') id: string,
     @Body() bookDto: BookUpdateRequestDto,
@@ -69,6 +78,8 @@ export class BookController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async deleteBook(@Param('id') id: string) {
     await this.bookService.deleteBook(id);
     return ApiResponse.message('Xóa sách thành công');

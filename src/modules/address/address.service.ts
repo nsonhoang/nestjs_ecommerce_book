@@ -4,6 +4,7 @@ import { UpdateAddressDto } from './dto/update-address.request.dto';
 import { AddressResponseDTO } from './dto/address.response';
 import { AddressRequestDTO } from './dto/address.request.dto';
 import { AddressRepository } from './address.repository';
+import type { AddressWithLocation } from './address.repository';
 import { GhnRepository } from '../ghn/ghn.repository';
 import { GhnService } from '../ghn/ghn.service';
 import { WardResponse } from '../ghn/dto/ghn.response.dto';
@@ -119,6 +120,41 @@ export class AddressService {
     );
   }
 
+  async findAllForUser(userId: string): Promise<AddressResponseDTO[]> {
+    const addresses: AddressWithLocation[] =
+      await this.addressRepository.findAllForUser(userId);
+    const wardCache = new Map<number, WardResponse[]>();
+
+    return Promise.all(
+      addresses.map(async (address): Promise<AddressResponseDTO> => {
+        const districtId: number = address.district.DistrictID;
+
+        let wards: WardResponse[] | undefined = wardCache.get(districtId);
+        if (!wards) {
+          wards = await this.ghnService.getWardsByDistrict(districtId);
+          wardCache.set(districtId, wards);
+        }
+
+        const foundWard = wards.find((w) => w.WardCode === address.wardCode);
+
+        if (!foundWard) {
+          throw new NotFoundException(
+            `Phường/Xã với mã ${address.wardCode} không tồn tại`,
+          );
+        }
+
+        return {
+          ...address,
+          ward: {
+            WardCode: foundWard.WardCode,
+            WardName: foundWard.WardName,
+            DistrictID: foundWard.DistrictID,
+          },
+        } as AddressResponseDTO;
+      }),
+    );
+  }
+
   async findOne(id: string): Promise<AddressResponseDTO> {
     const address = await this.addressRepository.findOne(id);
     if (!address) {
@@ -196,8 +232,63 @@ export class AddressService {
     return { ...address, ward };
   }
 
+  async updateForUser(
+    id: string,
+    userId: string,
+    updateAddressDto: UpdateAddressDto,
+  ): Promise<AddressResponseDTO> {
+    const existing = await this.addressRepository.findOneForUser(id, userId);
+    if (!existing) {
+      throw new NotFoundException('Không tìm thấy địa chỉ để cập nhật');
+    }
+
+    const nextProvinceId =
+      updateAddressDto.provinceId ?? existing.province.ProvinceID;
+    const nextDistrictId =
+      updateAddressDto.districtId ?? existing.district.DistrictID;
+    const nextWardCode = updateAddressDto.wardCode ?? existing.wardCode;
+
+    const provinceExist =
+      await this.ghnRepository.findProvinceById(nextProvinceId);
+    if (!provinceExist) {
+      throw new NotFoundException('Tỉnh/Thành phố không tồn tại');
+    }
+
+    const districtExist =
+      await this.ghnRepository.findDistrictById(nextDistrictId);
+    if (!districtExist || districtExist.provinceId !== nextProvinceId) {
+      throw new NotFoundException('Quận/Huyện không tồn tại');
+    }
+
+    const ward = await this.resolveWardFromApi({
+      districtId: nextDistrictId,
+      wardCode: nextWardCode,
+    });
+
+    const address = await this.addressRepository.update(id, {
+      ...updateAddressDto,
+      provinceId: nextProvinceId,
+      districtId: nextDistrictId,
+      wardCode: nextWardCode,
+    });
+
+    if (!address) {
+      throw new NotFoundException('Không tìm thấy địa chỉ để cập nhật');
+    }
+
+    return { ...address, ward };
+  }
+
   async remove(id: string): Promise<void> {
     const address = await this.addressRepository.findOne(id);
+    if (!address) {
+      throw new NotFoundException('Không tìm thấy địa chỉ để xóa');
+    }
+    await this.addressRepository.remove(id);
+  }
+
+  async removeForUser(id: string, userId: string): Promise<void> {
+    const address = await this.addressRepository.findOneForUser(id, userId);
     if (!address) {
       throw new NotFoundException('Không tìm thấy địa chỉ để xóa');
     }

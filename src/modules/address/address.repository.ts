@@ -93,6 +93,40 @@ export class AddressRepository {
     }));
   }
 
+  async findAllForUser(userId: string): Promise<AddressWithLocation[]> {
+    const addresses = await this.prisma.address.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        userId: true,
+        fullName: true,
+        phone: true,
+        addressLine: true,
+        wardCode: true,
+        district: true,
+        province: true,
+        country: true,
+        label: true,
+        isDefault: true,
+      },
+    });
+
+    return addresses.map((address) => ({
+      ...address,
+      district: {
+        DistrictID: address.district.id,
+        DistrictName: address.district.name,
+        ProvinceID: address.district.provinceId,
+      },
+      province: {
+        ProvinceID: address.province.id,
+        ProvinceName: address.province.name,
+      },
+      label: address.label ?? undefined,
+      country: address.country ?? undefined,
+    }));
+  }
+
   async findOne(id: string): Promise<AddressWithLocation | null> {
     const address = await this.prisma.address.findUnique({
       where: { id },

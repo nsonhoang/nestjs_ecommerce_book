@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Query,
@@ -22,6 +21,7 @@ import {
 import { GhnCalculateShippingRequestDto } from './dto/calculate-shipping.request.dto';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { GhnWebhookGuard } from './ghn-webhook.guard';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 
 @Controller('v1/ghn')
 export class GhnController {
@@ -56,6 +56,7 @@ export class GhnController {
   }
 
   @Post('calculate-shipping')
+  @UseGuards(JwtAuthGuard)
   async calculateShipping(
     @Body() body: GhnCalculateShippingRequestDto,
   ): Promise<ApiResponse<{ shippingFee: number }>> {

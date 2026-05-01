@@ -34,6 +34,8 @@ export class InventoryController {
 
   // nguyên cái này chỉ cho admin xem
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async create(
     @Body() createInventoryDto: InventoryRequestDto,
   ): Promise<ApiResponse<InventoryResponseDto>> {
@@ -63,6 +65,8 @@ export class InventoryController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async findAll(): Promise<ApiResponse<InventoryResponseDto[]>> {
     const inventory = await this.inventoryService.findAll();
     return ApiResponse.ok<InventoryResponseDto[]>(
@@ -72,6 +76,8 @@ export class InventoryController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async findOne(
     @Param('id') id: string,
   ): Promise<ApiResponse<InventoryResponseDto | null>> {
@@ -99,6 +105,8 @@ export class InventoryController {
   // }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async remove(@Param('id') id: string) {
     await this.inventoryService.remove(id);
     return ApiResponse.message('Xóa thành công');

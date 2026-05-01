@@ -9,6 +9,7 @@ import {
   ParseFilePipe,
   Post,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 
@@ -17,6 +18,10 @@ import { ImageBookService } from './image-book.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { BookImageRequestDto } from './dto/book-image.request';
 import { UploadFile } from 'src/media/media.service';
+import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { AuthRole } from '../roles/roles.enum';
 
 @Controller('/v1/book-images')
 export class ImageBookController {
@@ -35,6 +40,8 @@ export class ImageBookController {
   // }
 
   @Post('')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   @UseInterceptors(
     FilesInterceptor(
       'files',
@@ -68,12 +75,16 @@ export class ImageBookController {
   }
 
   @Delete()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async deleteImageByPublicId(@Body('publicId') publicId: string[]) {
     await this.imageBookService.deleteImageByPublicId(publicId);
     return ApiResponse.message('Xóa ảnh sách thành công');
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   async deleteImageById(@Param('id') id: string) {
     await this.imageBookService.deleteImageById(id);
     return ApiResponse.message('Xóa ảnh sách thành công');
