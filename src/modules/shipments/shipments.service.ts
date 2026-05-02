@@ -5,6 +5,7 @@ import { OrderStatus, Prisma } from 'generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginateShipmentsDto } from './dto/paginate-shipments.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type ShipmentWithOrder = Prisma.ShipmentGetPayload<{
   include: { order: true };
@@ -16,6 +17,7 @@ export class ShipmentsService {
 
   constructor(
     private readonly shipmentsRepository: ShipmentsRepository,
+    private readonly notificationService: NotificationsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -60,6 +62,7 @@ export class ShipmentsService {
     if (['return', 'returning', 'returned'].includes(normalized)) {
       return OrderStatus.RETURNING;
     }
+    // còn 1 cái status là hoàn tiền nữa mà mình chưa tích hợ thanh toán online nên chưa cần mapping
 
     return null;
   }
@@ -80,6 +83,8 @@ export class ShipmentsService {
         );
         return false;
       }
+
+      // và status là returned thì inventory sẽ được cộng lại, cái này sẽ được GHN gọi khi khách hàng trả hàng
 
       const nextOrderStatus = this.mapGhnShipmentStatusToOrderStatus(
         input.status,
@@ -113,6 +118,19 @@ export class ShipmentsService {
           });
         }
       });
+
+      // sau khi xong sẽ bắn thông báo lên hệ thống
+
+      const userId = await this.shipmentsRepository.getUserIdByGhnCode(
+        input.orderCode,
+      );
+      if (userId) {
+        await this.notificationService.sendNotificationToUser(
+          userId,
+          `Đơn hàng của bạn đã được cập nhật trạng thái: ${input.status}`,
+          `Đơn hàng GHN ${input.orderCode} hiện có trạng thái: ${input.status}`,
+        );
+      }
 
       return true;
     } catch (error) {

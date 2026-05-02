@@ -11,6 +11,7 @@ import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { AuthController } from './auth.controller';
 import { RedisModule } from '../redis/redis.module';
 import { RoleModule } from '../roles/role.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RoleModule } from '../roles/role.module';
     }),
     UserModule, // ← import UserModule để dùng UserRepository
     RoleModule, // ← import RoleModule để dùng RoleRepository
+    NotificationsModule, // ← import NotificationsModule để xóa token của user device khi logout và add token mới khi login
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

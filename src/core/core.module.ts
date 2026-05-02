@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MediaModule } from 'src/media/media.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from 'src/modules/prisma/prisma.module';
+import { NotificationsModule } from 'src/modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { PrismaModule } from 'src/modules/prisma/prisma.module';
     }),
     PrismaModule,
     MediaModule,
+    NotificationsModule,
   ],
-  exports: [ConfigModule, PrismaModule, MediaModule],
+  exports: [ConfigModule, PrismaModule, MediaModule, NotificationsModule],
 })
 export class CoreModule {}

@@ -23,6 +23,7 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 import { AuthRole } from '../roles/roles.enum';
 import { RoleRepository } from '../roles/role.repository';
 import { UserService } from '../users/user.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
 
@@ -33,6 +34,7 @@ export class AuthService {
     @Inject(REDIS) private readonly redis: Redis,
     private readonly userService: UserService, //có thể chuyển thành userService nếu muốn, nhưng do chỉ cần dùng đến hàm findByEmail và createUser nên sẽ không cần thiết phải gọi cả service lên
     private readonly jwtService: JwtService,
+    private readonly notificationsService: NotificationsService,
     private readonly roleRepository: RoleRepository,
   ) {}
 
@@ -41,12 +43,13 @@ export class AuthService {
   //validate role name kh đc trùng
 
   async login(
+    // cần phải thêm upload user device
     authRequest: AuthRequestDto,
     res: Response, // cái này để set cookie, nhưng sẽ không trả về cho client
   ): Promise<AuthResponse> {
     try {
       const user = await this.validate(authRequest);
-      const cfrsToken = this.generateCsrfToken();
+      const csrfToken = this.generateCsrfToken();
       const refreshToken = this.generateRefreshToken(
         user.id,
         user.email,
@@ -75,13 +78,22 @@ export class AuthService {
         maxAge: REFRESH_TOKEN_TIME * 1000, // 7 ngày
         path: '/v1/auth/refresh-token',
       });
-      res.cookie('csrfToken', cfrsToken, {
+      res.cookie('csrfToken', csrfToken, {
         httpOnly: false, // Có thể truy cập từ JavaScript để gửi kèm trong header
         secure: isProd, //để cookie chỉ được gửi qua HTTPS, giúp bảo vệ dữ liệu khỏi bị đánh cắp qua kết nối không an toàn
         sameSite: 'lax',
         maxAge: REFRESH_TOKEN_TIME * 1000,
         path: '/v1/auth/refresh-token', // Đảm bảo cookie được gửi cho tất cả các endpoint
       });
+
+      // upload user device
+      if (authRequest.fcmToken && authRequest.deviceOs) {
+        await this.notificationsService.saveDeviceToken(
+          user.id,
+          authRequest.fcmToken,
+          authRequest.deviceOs,
+        );
+      }
 
       return {
         accessToken: this.generateAccessToken(
@@ -91,7 +103,7 @@ export class AuthService {
         ),
         expiresAt: 900000, // 15 phút
         // Tạo CSRF token và gửi về client,
-        csrfToken: cfrsToken,
+        csrfToken: csrfToken,
         tokenType: 'Bearer',
       };
     } catch (error) {
@@ -203,7 +215,8 @@ export class AuthService {
     }
   }
 
-  async logout(accessToken: string): Promise<string> {
+  async logout(accessToken: string, fcmToken?: string): Promise<string> {
+    // cần phải thêm xóa user device
     try {
       // 2) Xóa refresh token trong Redis dựa trên userId lấy được từ access token
       const payload: JwtPayload = this.verifyToken(accessToken);
@@ -219,6 +232,14 @@ export class AuthService {
         'EX',
         Math.max(0, ttl),
       ); // Blacklist access token là thời gian sống còn lại của access token, có thể lấy từ payload.exp - hiện tại
+      if (fcmToken) {
+        this.notificationsService.removeDeviceToken(fcmToken).catch((error) => {
+          this.logger.error(
+            `Failed to remove device token ${fcmToken} during logout:`,
+            error,
+          );
+        });
+      }
     } catch (error) {
       this.logger.error('Failed to logout', error);
       throw new UnauthorizedException(

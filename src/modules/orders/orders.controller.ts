@@ -77,7 +77,7 @@ export class OrdersController {
   }
 
   //còn 1 hàm là update status nữa
-
+  // cập nhật đơn hàng xong sẽ bắn notification cho khách hàng, cái này sẽ được gọi bởi admin khi xác nhận đơn hàng, hoặc khi giao hàng
   @Patch('/:id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -86,8 +86,11 @@ export class OrdersController {
     @Body() body: UpdateOrderStatusRequestDto,
   ): Promise<ApiResponse<OrderResponseDto>> {
     // NOTE: Endpoint này dành cho người bán/admin xác nhận đơn.
+    // endpoint chỉ nên dùng để cập nhật trạng thái đơn hàng sang PROCESSING, sau đó khi ghn gửi web hook về thì sẽ cập nhật trạng thái đơn hàng vận chuyển tương ứng
     // Khi chuyển sang PROCESSING, OrdersService sẽ tạo đơn GHN + Shipment record.
     const order = await this.ordersService.updateOrderStatus(id, body.status);
     return ApiResponse.ok(order, 'Cập nhật trạng thái đơn hàng thành công');
   }
+
+  //hủy đơn hàng dành cho khách hàng, đơn hàng ở trạng thái pending mới được hủy, khi hủy xong sẽ cộng lại số lượng vào inventory và gửi thông báo cho khách hàng
 }

@@ -24,11 +24,12 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // lấy cả thông tin Os và FCM token để lưu vào database, sau này có thể dùng để gửi thông báo đến thiết bị của user
   @Post('/login')
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() data: AuthRequestDto,
-    @Res({ passthrough: true }) res: ExpressResponse,
+    @Res({ passthrough: true }) res: ExpressResponse, // cần phải có cái này để set cookie trong service, nếu không có thì sẽ bị lỗi Can't set headers after they are sent.
   ): Promise<ApiResponse<AuthResponse>> {
     const user = await this.authService.login(data, res);
     return ApiResponse.ok(user, 'đăng nhập thành công', HttpStatus.OK);
@@ -67,11 +68,14 @@ export class AuthController {
   @Post('/logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  async logout(@Req() req: Request): Promise<ApiResponse<string>> {
+  async logout(
+    @Req() req: Request,
+    @Body('fcmToken') fcmToken?: string,
+  ): Promise<ApiResponse<string>> {
     const authHeader = req.headers['authorization'];
     const accessToken = authHeader?.split(' ')[1];
     console.log('Access Token:', accessToken); // Debug: log access token
-    const result = await this.authService.logout(accessToken!);
+    const result = await this.authService.logout(accessToken!, fcmToken);
     return ApiResponse.ok(result, 'Logout successful', HttpStatus.OK);
   }
 }

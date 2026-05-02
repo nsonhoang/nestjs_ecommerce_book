@@ -27,6 +27,7 @@ import { IGhnCreateOrderRequest } from '../ghn/ghn.interface';
 
 import { ShipmentsService } from '../shipments/shipments.service';
 import { CartItemResponseDto } from '../carts/dto/cart.response.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type OrderItemPayload = {
   bookId: string;
@@ -56,6 +57,7 @@ export class OrdersService {
     private readonly vouchersService: VouchersService,
     private readonly ghnService: GhnService, // gọi này để tính phí ship
     private readonly shipmentsService: ShipmentsService,
+    private readonly notificationsService: NotificationsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -113,8 +115,6 @@ export class OrdersService {
       console.log('Địa chỉ giao hàng:', address);
 
       const orderCode = this.generateOrderCode();
-
-      //vẩn phải tính thêm phí ship ở đây không lưu vào database chỉ cần
 
       const createdOrder = await this.prisma.$transaction(async (tx) => {
         let voucherId: string | undefined;
@@ -292,8 +292,10 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
+    // bắn thông báo cho khách hàng khi có sự thay đổi trạng thái đơn hàng, cái này sẽ được gọi bởi admin khi xác nhận đơn hàng, hoặc khi giao hàng
+    // Chỉ tạo shipment khi chuyển sang PROCESSING (người bán/admin xác nhận đơn)và chỉ update processing đc thôi
+    // còn trạng thái khác sẽ đc cập nhật thông qua webhook của GHN, tránh việc admin có thể tự ý chuyển trạng thái giao hàng khi chưa tạo đơn GHN, hoặc chuyển sang trạng thái khác ngoài quy trình xử lý đơn hàng thông thường. Ngoài ra việc tạo đơn GHN sẽ được thực hiện trong transaction khi cập nhật sang PROCESSING để đảm bảo tính nhất quán dữ liệu giữa đơn hàng và shipment.
 
-    // Chỉ tạo shipment khi chuyển sang PROCESSING (người bán/admin xác nhận đơn)
     if (status !== OrderStatus.PROCESSING) {
       return await this.prisma.order.update({
         where: { id: orderId },
@@ -371,6 +373,8 @@ export class OrdersService {
     );
     const totalAmount = amountBeforeShipping + shippingFee;
 
+    // bắn thông báo ở đây
+
     const updatedOrder = await this.prisma.$transaction(async (tx) => {
       await this.shipmentsService.createShipment(
         {
@@ -398,6 +402,12 @@ export class OrdersService {
         include: { items: true },
       });
     });
+    // nổ thống báo tại đây
+    await this.notificationsService.sendNotificationToUser(
+      order.userId,
+      'Đơn hàng đã được cập nhật trạng thái',
+      `Đơn hàng ${order.code} của bạn đã được cập nhật và đang được xử lý.Ngày giao dự kiến: ${ghnOrder.expected_delivery_time ? new Date(ghnOrder.expected_delivery_time).toLocaleDateString() : 'Đang cập nhật'}. Cảm ơn bạn đã mua hàng!`,
+    ); // cái này là chi nổ khi admin cập nhật thôi chứ muốn trạng thái đổi liền phải thông qua webhook
 
     return this.mapOrder(updatedOrder);
   }

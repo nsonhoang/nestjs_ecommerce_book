@@ -189,4 +189,21 @@ export class ShipmentsRepository {
       data,
     });
   }
+
+  // Hàm lấy userId từ mã GHN
+  async getUserIdByGhnCode(ghnOrderCode: string): Promise<string | null> {
+    const shipment = await this.prisma.shipment.findUnique({
+      where: { ghnOrderCode: ghnOrderCode },
+      select: {
+        order: {
+          select: {
+            userId: true, // Chỉ lấy đúng trường userId trong bảng Order
+          },
+        },
+      },
+    });
+
+    // Nếu tìm thấy shipment và order, trả về userId. Nếu không, trả về null.
+    return shipment?.order?.userId || null;
+  }
 }

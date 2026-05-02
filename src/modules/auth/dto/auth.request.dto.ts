@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   MinLength,
@@ -16,4 +17,12 @@ export class AuthRequestDto {
   @MinLength(6)
   @MaxLength(50)
   password!: string;
+
+  @IsOptional() // đối với web có thể không cần FCM token, nhưng đối với mobile thì cần để gửi thông báo đẩy
+  @IsString()
+  fcmToken?: string;
+
+  @IsOptional()
+  @IsString()
+  deviceOs?: string; // Ví dụ gửi lên 'android', 'ios' hoặc 'web'
 }
