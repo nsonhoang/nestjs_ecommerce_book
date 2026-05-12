@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { NotificationsRepository } from './notifications.repository';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class NotificationsService {
@@ -9,6 +11,8 @@ export class NotificationsService {
 
   constructor(
     private readonly notificationsRepository: NotificationsRepository,
+    @InjectQueue('notifications-queue')
+    private readonly notificationQueue: Queue,
   ) {
     if (!admin.apps.length) {
       // Tạo đường dẫn tuyệt đối từ thư mục gốc của dự án
@@ -61,6 +65,42 @@ export class NotificationsService {
       }
     } catch (error) {
       this.logger.error('Lỗi gửi thông báo', error);
+    }
+  }
+
+  // gửi cho nhiều người dùng có chỉ định
+
+  async sendNotificationToUsers(
+    userIds: string[],
+    title: string,
+    body: string,
+  ) {
+    await this.notificationQueue.addBulk(
+      userIds.map((userId) => ({
+        name: 'send-notification',
+        data: { userId, title, body },
+      })),
+    );
+  }
+
+  // hàm này gửi tắt cả thông báo đến thiết bị của người dùng mà trước hết người dùng phải subscribe vào 1 topic nào đó, ví dụ như topic "sales" để nhận thông báo về các chương trình khuyến mãi
+  async sendNotificationToTopic(topic: string, title: string, body: string) {
+    // mặc định là người dùng phải lúc đăng nhập phải đằng kí vào topic "sales"
+    // để nhận thông báo về các chương trình khuyến mãi,
+    //  nếu không có topic nào thì sẽ gửi đến tất cả người dùng đã subscribe vào topic đó
+    try {
+      const response = await admin.messaging().send({
+        topic,
+        notification: {
+          title,
+          body,
+        },
+      });
+      this.logger.log(
+        `Gửi thông báo đến topic ${topic} thành công: ${response}`,
+      );
+    } catch (error) {
+      this.logger.error(`Lỗi gửi thông báo đến topic ${topic}`, error);
     }
   }
 

@@ -13,11 +13,16 @@ import { PromotionUpdateRequestDto } from './dto/promotion-update.request.dto';
 import { PaginatePromotionDto } from './dto/pagination-promotion.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 @Injectable()
 export class PromotionService {
   private readonly logger = new Logger(PromotionService.name);
 
-  constructor(private readonly promotionRepository: PromotionRepository) {}
+  constructor(
+    private readonly promotionRepository: PromotionRepository,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createPromotion(
     promotionData: PromotionRequestDto,
@@ -44,6 +49,26 @@ export class PromotionService {
     }
 
     return this.promotionRepository.create(promotionData);
+  }
+
+  //admin gửi thông báo cho sales cho người dùng về chương trình khuyến mãi
+  async sendPromotionNotification(
+    title: string,
+    body: string,
+    promotionId: string,
+  ) {
+    const promotion = await this.promotionRepository.findById(promotionId);
+    if (!promotion) {
+      throw new NotFoundException(
+        `Không tìm thấy chương trình khuyến mãi với ID: ${promotionId}`,
+      );
+    }
+    // gửi thông báo đến topic "sales" để tất cả người dùng đã subscribe vào topic này sẽ nhận được thông báo về chương trình khuyến mãi mới
+    await this.notificationsService.sendNotificationToTopic(
+      'sales', // ,mặc định gửi vào sales
+      title,
+      body,
+    );
   }
 
   async getAllPromotions(

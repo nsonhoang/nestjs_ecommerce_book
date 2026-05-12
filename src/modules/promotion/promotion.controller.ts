@@ -22,6 +22,7 @@ import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from '../roles/roles.enum';
+import { PromotionNotifyRequestDto } from './dto/promotion-notify.request.dto';
 
 @Controller('/v1/promotions')
 export class PromotionController {
@@ -41,6 +42,23 @@ export class PromotionController {
       newPromotion,
       'Thêm chương trình khuyến mãi thành công',
     );
+  }
+
+  @Post('/:id/notify')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  async notifyUsersAboutPromotion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() notificationData: PromotionNotifyRequestDto,
+  ): Promise<ApiResponse<unknown>> {
+    // Gửi thông báo đến các người dùng
+    await this.promotionService.sendPromotionNotification(
+      notificationData.title,
+      notificationData.body,
+      id,
+    );
+
+    return ApiResponse.message('Gửi thông báo thành công');
   }
 
   @Get()
