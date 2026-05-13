@@ -11,7 +11,10 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
-import { type Request, type Response as ExpressResponse } from 'express';
+import {
+  type Request as ExpressRequest,
+  type Response as ExpressResponse,
+} from 'express';
 import { ApiResponse } from 'src/common/api-response';
 import { AuthService } from './auth.service';
 import { AuthResponse } from './auth.interface';
@@ -29,9 +32,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() data: AuthRequestDto,
+    @Req() req: ExpressRequest,
     @Res({ passthrough: true }) res: ExpressResponse, // cần phải có cái này để set cookie trong service, nếu không có thì sẽ bị lỗi Can't set headers after they are sent.
   ): Promise<ApiResponse<AuthResponse>> {
-    const user = await this.authService.login(data, res);
+    const user = await this.authService.login(data, req, res);
     return ApiResponse.ok(user, 'đăng nhập thành công', HttpStatus.OK);
   }
 
@@ -48,20 +52,11 @@ export class AuthController {
   @Post('/refresh-token')
   @HttpCode(HttpStatus.OK)
   async refreshToken(
-    @Req() req: Request,
+    @Req() req: ExpressRequest,
     @Res({ passthrough: true }) res: ExpressResponse,
-    @Headers('x-csrf-token') csrfHeader?: string,
+    @Headers('x-csrf-token') csrfHeader: string,
   ): Promise<ApiResponse<AuthResponse>> {
-    const refreshToken = req.cookies?.refreshToken as string | undefined;
-    const csrfCookie = req.cookies?.csrfToken as string | undefined;
-
-    if (!refreshToken)
-      throw new UnauthorizedException('Không tìm thấy refresh token');
-    if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
-      throw new ForbiddenException('CSRF token không hợp lệ');
-    }
-
-    const result = await this.authService.refreshToken(refreshToken, res);
+    const result = await this.authService.refreshToken(csrfHeader, res, req);
     return ApiResponse.ok(result, 'Refresh token thành công', HttpStatus.OK);
   }
 
@@ -69,13 +64,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   async logout(
-    @Req() req: Request,
+    @Req() req: ExpressRequest,
     @Body('fcmToken') fcmToken?: string,
   ): Promise<ApiResponse<string>> {
     const authHeader = req.headers['authorization'];
     const accessToken = authHeader?.split(' ')[1];
     console.log('Access Token:', accessToken); // Debug: log access token
-    const result = await this.authService.logout(accessToken!, fcmToken);
+    const result = await this.authService.logout(accessToken!, req, fcmToken);
     return ApiResponse.ok(result, 'Logout successful', HttpStatus.OK);
   }
 }

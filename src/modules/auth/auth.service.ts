@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -13,7 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../users/user.interface';
 import { AuthResponse } from './auth.interface';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { JwtPayload, JwtUser } from 'src/strategies/jwt-payload.interface';
 import { REDIS } from '../redis/redis.module';
@@ -30,6 +31,8 @@ const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+
+  //gắn thêm deviceId vào token để có thể quản lý thiết bị của user, phục vụ cho việc rate-limit hoặc block thiết bị nếu cần thiết, tránh trường hợp user chia sẻ token cho nhiều người dùng khác nhau
   constructor(
     @Inject(REDIS) private readonly redis: Redis,
     private readonly userService: UserService, //có thể chuyển thành userService nếu muốn, nhưng do chỉ cần dùng đến hàm findByEmail và createUser nên sẽ không cần thiết phải gọi cả service lên
@@ -45,31 +48,67 @@ export class AuthService {
   async login(
     // cần phải thêm upload user device
     authRequest: AuthRequestDto,
+    req: Request,
     res: Response, // cái này để set cookie, nhưng sẽ không trả về cho client
   ): Promise<AuthResponse> {
     try {
       const user = await this.validate(authRequest);
       const csrfToken = this.generateCsrfToken();
+      const deviceId = this.getDeviceId(req);
+      const sessionId = crypto.randomBytes(16).toString('hex'); // set up token có nhiều device đang đăng nhập, đánh dấu  tạo sessionId ngẫu nhiên, có thể dùng thư viện uuid để tạo nếu muốn
       const refreshToken = this.generateRefreshToken(
         user.id,
         user.email,
         user.role.name,
+        sessionId,
       );
-      const isProd = process.env.NODE_ENV === 'production';
 
+      const isProd = process.env.NODE_ENV === 'production';
+      // set up lại refresh token trong redis, với id là key 1 user chỉ tối đa 5 thiết bị đang nhập, co thêm field là
+      // deviceId và ...
       await this.redis.set(
-        `refreshToken:${user.id}`,
+        `refreshToken:${sessionId}`,
         this.hashToken(refreshToken),
         'EX',
         REFRESH_TOKEN_TIME,
       );
-      const isSet = await this.redis.exists(`refreshToken:${user.id}`);
-      if (!isSet) {
-        this.logger.error(
-          `Failed to store refresh token for user ${user.id} in Redis`,
+      //này dùng đẻ xác định thiêt bị ,người dùng
+      await this.redis.set(
+        `deviceSession:${user.id}:${deviceId}`,
+        sessionId,
+        'EX',
+        REFRESH_TOKEN_TIME,
+      );
+
+      const now = Date.now();
+      // cái này dùng để sắp sếp các phiên đăng nhâp theo thứ thự có trc có sau,
+      // để sau này nếu có session mới nó sẽ dựa nà đây để xóa session cũ hơn
+      //  lưu vào sorted set với score là timestamp để có thể quản lý thiết bị theo thời gian đăng nhập
+      await this.redis.zadd(`userDevices:${user.id}`, String(now), deviceId);
+
+      await this.redis.expire(`userDevices:${user.id}`, REFRESH_TOKEN_TIME);
+
+      //giới hạn tối đa 5 thiết bị đang nhập
+      const deviceCount = await this.redis.zcard(`userDevices:${user.id}`);
+      if (deviceCount > 5) {
+        // nếu vượt quá 5 thiết bị, xóa thiết bị cũ nhất (có score nhỏ nhất)
+        const oldestDevice = await this.redis.zrange(
+          `userDevices:${user.id}`,
+          0,
+          deviceCount - 6,
         );
-        throw new Error('Failed to store refresh token');
+        for (const oldestDeviceId of oldestDevice) {
+          if (oldestDeviceId) {
+            const oldSessionId = await this.redis.get(
+              `deviceSession:${user.id}:${oldestDeviceId}`,
+            );
+            await this.redis.del(`refreshToken:${oldSessionId}`); // xóa refresh token của thiết bị cũ
+          }
+          await this.redis.del(`deviceSession:${user.id}:${oldestDeviceId}`);
+          await this.redis.zrem(`userDevices:${user.id}`, oldestDeviceId);
+        }
       }
+      // set cookie cho refresh token, với httpOnly để không bị truy cập từ JavaScript, secure để chỉ gửi qua HTTPS, sameSite để ngăn chặn CSRF
 
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
@@ -100,6 +139,7 @@ export class AuthService {
           user.id,
           user.email,
           user.role.name,
+          sessionId,
         ),
         expiresAt: 900000, // 15 phút
         // Tạo CSRF token và gửi về client,
@@ -112,73 +152,6 @@ export class AuthService {
         'Đăng nhập thất bại: ' +
           (error instanceof Error ? error.message : 'Lỗi không xác định'),
       );
-    }
-  }
-
-  private async validate(authRequest: AuthRequestDto): Promise<User> {
-    const user = await this.userService.getUserByEmail(authRequest.email);
-
-    if (!user) {
-      throw new NotFoundException(
-        'Không tìm thấy người dùng với email ' + authRequest.email,
-      );
-    }
-    const isMatch = await bcrypt.compare(authRequest.password, user.password);
-    if (!isMatch) {
-      throw new UnauthorizedException('Mật khẩu không đúng');
-    }
-    return user;
-  }
-
-  private generateAccessToken(
-    userId: string,
-    email: string,
-    role: string,
-  ): string {
-    return this.jwtService.sign({
-      sub: userId,
-      email: email,
-      role: role,
-    });
-  }
-
-  private generateRefreshToken(
-    userId: string,
-    email: string,
-    role: string,
-  ): string {
-    return this.jwtService.sign(
-      {
-        sub: userId,
-        email: email,
-        role: role,
-      },
-      {
-        expiresIn: '7d',
-      },
-    );
-  }
-
-  private generateCsrfToken(): string {
-    // Tạo một token ngẫu nhiên, có thể sử dụng thư viện như uuid hoặc crypto
-    return crypto.randomBytes(32).toString('hex'); // Ví dụ đơn giản, nên dùng thư viện để tạo token mạnh hơn
-  }
-
-  private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  private verifyToken(token: string): JwtPayload {
-    try {
-      return this.jwtService.verify(token, {
-        secret:
-          process.env.JWT_REFRESH_SECRET ||
-          process.env.JWT_SECRET ||
-          'your-secret-key',
-      });
-    } catch (error) {
-      this.logger.error('Failed to verify token', error);
-      throw new UnauthorizedException('Token không hợp lệ');
     }
   }
 
@@ -215,47 +188,23 @@ export class AuthService {
     }
   }
 
-  async logout(accessToken: string, fcmToken?: string): Promise<string> {
-    // cần phải thêm xóa user device
-    try {
-      // 2) Xóa refresh token trong Redis dựa trên userId lấy được từ access token
-      const payload: JwtPayload = this.verifyToken(accessToken);
-      console.log('Logout payload:', payload); // Debug: log payload
-      await this.redis.del(`refreshToken:${payload.sub}`);
-      // 3) Có thể thêm blacklist cho access token nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
-      const now = Math.floor(Date.now() / 1000);
-      const ttl = payload.exp - now;
-      const hashAccessToken = this.hashToken(accessToken);
-      await this.redis.set(
-        `blacklist:${hashAccessToken}`,
-        'true',
-        'EX',
-        Math.max(0, ttl),
-      ); // Blacklist access token là thời gian sống còn lại của access token, có thể lấy từ payload.exp - hiện tại
-      if (fcmToken) {
-        this.notificationsService.removeDeviceToken(fcmToken).catch((error) => {
-          this.logger.error(
-            `Failed to remove device token ${fcmToken} during logout:`,
-            error,
-          );
-        });
-      }
-    } catch (error) {
-      this.logger.error('Failed to logout', error);
-      throw new UnauthorizedException(
-        'Đăng xuất thất bại: ' +
-          (error instanceof Error ? error.message : 'Lỗi không xác định'),
-      );
-    }
-    return 'đăng xuất thành công';
-  }
-
   async refreshToken(
-    refreshToken: string,
+    csrfToken: string,
     res: Response,
+    req: Request,
   ): Promise<AuthResponse> {
     try {
       // 1) Verify refresh token
+      const refreshToken = req.cookies?.refreshToken as string | undefined;
+      const csrfCookie = req.cookies?.csrfToken as string | undefined;
+      const deviceId = this.getDeviceId(req);
+
+      if (!refreshToken)
+        throw new UnauthorizedException('Không tìm thấy refresh token');
+      if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie) {
+        throw new ForbiddenException('CSRF token không hợp lệ');
+      }
+
       const payload: JwtPayload = await this.jwtService.verify(refreshToken, {
         secret:
           process.env.JWT_REFRESH_SECRET ||
@@ -263,13 +212,27 @@ export class AuthService {
           'your-secret-key',
       });
 
-      const storedHash = await this.redis.get(`refreshToken:${payload.sub}`);
+      const storedHash = await this.redis.get(
+        `refreshToken:${payload.sessionId}`,
+      );
       const incomingHash = this.hashToken(refreshToken);
 
       if (!storedHash || storedHash !== incomingHash) {
         throw new UnauthorizedException('Refresh token không hợp lệ');
       }
-      await this.redis.del(`refreshToken:${payload.sub}`); // Xóa refresh token cũ sau khi đã xác thực thành công
+
+      // kiểm tra sessionId có hợp lệ không
+      const validSessionId = await this.redis.get(
+        `deviceSession:${payload.sub}:${deviceId}`,
+      );
+      if (!validSessionId || validSessionId !== payload.sessionId) {
+        throw new UnauthorizedException('Phiên làm việc không hợp lệ');
+      }
+
+      // cái này nó vẫn giữ lại sesionID cũ, đáng là phải cấp mới
+      await this.redis.del(`refreshToken:${payload.sessionId}`); // Xóa refresh token cũ sau khi đã xác thực thành công
+      //Xóa session cũ để tránh bị rò rỉ token cũ vẫn còn hiệu lực,
+      //  nếu có thiết bị nào đó đang sử dụng refresh token cũ thì sẽ bị mất hiệu lực ngay lập tức
 
       const newCsrfToken = this.generateCsrfToken();
 
@@ -283,20 +246,47 @@ export class AuthService {
         userLike.userId,
         userLike.email,
         userLike.role,
+        payload.sessionId,
       );
 
       const newRefreshToken = this.generateRefreshToken(
         userLike.userId,
         userLike.email,
         userLike.role,
+        payload.sessionId,
       );
 
-      //đưa refresh token mới vào redis, với key là userId, value là refresh token, và set expire time trùng với thời gian hết hạn của refresh token
+      //đưa refresh token mới vào redis, với key là userId, value là refresh token,
+      // và set expire time trùng với thời gian hết hạn của refresh token
       await this.redis.set(
-        `refreshToken:${payload.sub}`,
+        `refreshToken:${payload.sessionId}`,
         this.hashToken(newRefreshToken),
         'EX',
         REFRESH_TOKEN_TIME,
+      );
+
+      // Cập nhật lại sessionId trong Redis để đảm bảo đồng bộ với refresh token mới, này tưng tự trên để xác đinh thiết bị
+      const setResult = await this.redis.set(
+        `deviceSession:${userLike.userId}:${deviceId}`,
+        payload.sessionId,
+        'EX',
+        REFRESH_TOKEN_TIME,
+        'XX', // Chỉ set nếu key đã tồn tại, tránh trường hợp refresh token bị đánh cắp mà tạo được session mới
+      ); // gia hạn session cũ thêm 7 ngày, nếu muốn cấp mới sessionId thì phải xóa session cũ đi và tạo session mới với sessionId mới, nhưng
+
+      if (!setResult) {
+        //nếu lỗi thì phải cóa refresh token mới trong redis đi nếu không bộ hớ đấy sẽ bị rác redis
+        await this.redis.del(`refreshToken:${payload.sessionId}`);
+        throw new UnauthorizedException('Phiên làm việc không hợp lệ');
+      }
+
+      await this.redis.zadd(
+        `userDevices:${userLike.userId}`,
+        String(Date.now()),
+        deviceId,
+      ); // Cập nhật timestamp trong sorted set để quản lý thiết bị theo thời gian đăng nhập
+      console.log(
+        'đã cập nhật session mới và device mới sau khi refresh token thành công',
       );
 
       const isProd = process.env.NODE_ENV === 'production';
@@ -328,6 +318,152 @@ export class AuthService {
       throw new UnauthorizedException(
         'Refresh token không hợp lệ hoặc đã hết hạn',
       );
+    }
+  }
+
+  async logout(
+    accessToken: string,
+    request: Request,
+    fcmToken?: string,
+  ): Promise<string> {
+    // cần phải thêm xóa user device
+    try {
+      // 2) Xóa refresh token trong Redis dựa trên userId lấy được từ access token
+      const payload: JwtPayload = this.verifyToken(accessToken);
+      console.log('Logout payload:', payload); // Debug: log payload
+      //lấy sessionId theo deviceId để xóa refresh token, tránh trường hợp user đăng xuất trên một thiết bị nhưng lại xóa luôn refresh token của các thiết bị khác
+      const sessionId = await this.redis.get(
+        `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
+      );
+      if (sessionId) {
+        await this.redis.del(`refreshToken:${sessionId}`);
+      }
+
+      await this.redis.del(
+        `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
+      );
+      await this.redis.zrem(
+        `userDevices:${payload.sub}`,
+        this.getDeviceId(request),
+      );
+
+      console.log(
+        `Đã xóa session và device cho user ${payload.sub} trên thiết bị ${this.getDeviceId(request)}`,
+      ); // Debug: log thông tin đã xóa session và device
+      // 3) Có thể thêm blacklist cho access token nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = payload.exp - now;
+      const hashAccessToken = this.hashToken(accessToken);
+      await this.redis.set(
+        `blacklist:${hashAccessToken}`,
+        'true',
+        'EX',
+        Math.max(0, ttl),
+      ); // Blacklist access token là thời gian sống còn lại của access token, có thể lấy từ payload.exp - hiện tại
+      if (fcmToken) {
+        this.notificationsService.removeDeviceToken(fcmToken).catch((error) => {
+          this.logger.error(
+            `Failed to remove device token ${fcmToken} during logout:`,
+            error,
+          );
+        });
+      }
+    } catch (error) {
+      this.logger.error('Failed to logout', error);
+      throw new UnauthorizedException(
+        'Đăng xuất thất bại: ' +
+          (error instanceof Error ? error.message : 'Lỗi không xác định'),
+      );
+    }
+    return 'đăng xuất thành công';
+  }
+
+  private async validate(authRequest: AuthRequestDto): Promise<User> {
+    const user = await this.userService.getUserByEmail(authRequest.email);
+
+    if (!user) {
+      throw new NotFoundException(
+        'Không tìm thấy người dùng với email ' + authRequest.email,
+      );
+    }
+    const isMatch = await bcrypt.compare(authRequest.password, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Mật khẩu không đúng');
+    }
+    return user;
+  }
+
+  private getDeviceId(request: Request): string {
+    const deviceIdFromHeader = request.headers['x-device-id'] as string;
+    if (!deviceIdFromHeader) {
+      this.logger.warn(
+        'Không tìm thấy header x-device-id, sử dụng deviceId mặc định',
+      );
+      throw new BadRequestException(
+        'Thiếu header x-device-id để định danh thiết bị',
+      );
+    }
+
+    if (deviceIdFromHeader && deviceIdFromHeader.trim().length > 0) {
+      return deviceIdFromHeader.trim();
+    }
+    // bắt buộc phải có deviceID
+    // client phải bắt buộc gửi header x-device-id để định danh thiết bị, nếu không có thì sẽ tạo một deviceId ngẫu nhiên, nhưng như vậy sẽ không thể quản lý được thiết bị của user, nên tốt nhất là yêu cầu client phải gửi header này khi login
+    return deviceIdFromHeader;
+  }
+
+  private generateAccessToken(
+    userId: string,
+    email: string,
+    role: string,
+    sessionId: string, // có thể thêm sessionId vào payload nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
+  ): string {
+    return this.jwtService.sign({
+      sub: userId,
+      email: email,
+      role: role,
+      sessionId: sessionId,
+    });
+  }
+
+  private generateRefreshToken(
+    userId: string,
+    email: string,
+    role: string,
+    sessionId: string,
+  ): string {
+    return this.jwtService.sign(
+      {
+        sub: userId,
+        email: email,
+        role: role,
+        sessionId: sessionId,
+      },
+      {
+        expiresIn: '7d',
+      },
+    );
+  }
+  private generateCsrfToken(): string {
+    // Tạo một token ngẫu nhiên, có thể sử dụng thư viện như uuid hoặc crypto
+    return crypto.randomBytes(32).toString('hex'); // Ví dụ đơn giản, nên dùng thư viện để tạo token mạnh hơn
+  }
+
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  private verifyToken(token: string): JwtPayload {
+    try {
+      return this.jwtService.verify(token, {
+        secret:
+          process.env.JWT_REFRESH_SECRET ||
+          process.env.JWT_SECRET ||
+          'your-secret-key',
+      });
+    } catch (error) {
+      this.logger.error('Failed to verify token', error);
+      throw new UnauthorizedException('Token không hợp lệ');
     }
   }
 }

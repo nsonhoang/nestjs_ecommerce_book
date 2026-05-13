@@ -42,7 +42,9 @@ export class NotificationsController {
       body.body,
     );
 
-    return { message: 'Đã gửi lệnh bắn thông báo. Vui lòng xem log Terminal.' };
+    return ApiResponse.message(
+      'Đã gửi lệnh bắn thông báo. Vui lòng xem log Terminal.',
+    );
   }
 
   // cái này để test thôi
