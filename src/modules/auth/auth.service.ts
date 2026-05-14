@@ -25,6 +25,7 @@ import { AuthRole } from '../roles/roles.enum';
 import { RoleRepository } from '../roles/role.repository';
 import { UserService } from '../users/user.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { pipeline } from 'stream/promises';
 
 const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
 
@@ -55,6 +56,9 @@ export class AuthService {
       const user = await this.validate(authRequest);
       const csrfToken = this.generateCsrfToken();
       const deviceId = this.getDeviceId(req);
+      // sử dụng cái pipeline để thực hiện nhiều lệnh Redis trong một lần gọi,
+      //  giúp giảm độ trễ và tăng hiệu suất khi cần thực hiện nhiều thao tác liên quan đến token và session
+      const loginPipeline = this.redis.pipeline();
       const sessionId = crypto.randomBytes(16).toString('hex'); // set up token có nhiều device đang đăng nhập, đánh dấu  tạo sessionId ngẫu nhiên, có thể dùng thư viện uuid để tạo nếu muốn
       const refreshToken = this.generateRefreshToken(
         user.id,
@@ -66,14 +70,14 @@ export class AuthService {
       const isProd = process.env.NODE_ENV === 'production';
       // set up lại refresh token trong redis, với id là key 1 user chỉ tối đa 5 thiết bị đang nhập, co thêm field là
       // deviceId và ...
-      await this.redis.set(
+      loginPipeline.set(
         `refreshToken:${sessionId}`,
         this.hashToken(refreshToken),
         'EX',
         REFRESH_TOKEN_TIME,
       );
       //này dùng đẻ xác định thiêt bị ,người dùng
-      await this.redis.set(
+      loginPipeline.set(
         `deviceSession:${user.id}:${deviceId}`,
         sessionId,
         'EX',
@@ -84,13 +88,16 @@ export class AuthService {
       // cái này dùng để sắp sếp các phiên đăng nhâp theo thứ thự có trc có sau,
       // để sau này nếu có session mới nó sẽ dựa nà đây để xóa session cũ hơn
       //  lưu vào sorted set với score là timestamp để có thể quản lý thiết bị theo thời gian đăng nhập
-      await this.redis.zadd(`userDevices:${user.id}`, String(now), deviceId);
+      loginPipeline.zadd(`userDevices:${user.id}`, Number(now), deviceId);
 
-      await this.redis.expire(`userDevices:${user.id}`, REFRESH_TOKEN_TIME);
+      loginPipeline.expire(`userDevices:${user.id}`, REFRESH_TOKEN_TIME);
+
+      await loginPipeline.exec();
 
       //giới hạn tối đa 5 thiết bị đang nhập
       const deviceCount = await this.redis.zcard(`userDevices:${user.id}`);
       if (deviceCount > 5) {
+        const cleanPipeline = this.redis.pipeline();
         // nếu vượt quá 5 thiết bị, xóa thiết bị cũ nhất (có score nhỏ nhất)
         const oldestDevice = await this.redis.zrange(
           `userDevices:${user.id}`,
@@ -102,10 +109,11 @@ export class AuthService {
             const oldSessionId = await this.redis.get(
               `deviceSession:${user.id}:${oldestDeviceId}`,
             );
-            await this.redis.del(`refreshToken:${oldSessionId}`); // xóa refresh token của thiết bị cũ
+            cleanPipeline.del(`refreshToken:${oldSessionId}`); // xóa refresh token của thiết bị cũ
           }
-          await this.redis.del(`deviceSession:${user.id}:${oldestDeviceId}`);
-          await this.redis.zrem(`userDevices:${user.id}`, oldestDeviceId);
+          cleanPipeline.del(`deviceSession:${user.id}:${oldestDeviceId}`);
+          cleanPipeline.zrem(`userDevices:${user.id}`, oldestDeviceId);
+          await cleanPipeline.exec();
         }
       }
       // set cookie cho refresh token, với httpOnly để không bị truy cập từ JavaScript, secure để chỉ gửi qua HTTPS, sameSite để ngăn chặn CSRF
@@ -282,7 +290,7 @@ export class AuthService {
 
       await this.redis.zadd(
         `userDevices:${userLike.userId}`,
-        String(Date.now()),
+        Number(Date.now()),
         deviceId,
       ); // Cập nhật timestamp trong sorted set để quản lý thiết bị theo thời gian đăng nhập
       console.log(
@@ -335,10 +343,26 @@ export class AuthService {
       const sessionId = await this.redis.get(
         `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
       );
+
+      const currentSessionId = await this.redis.get(
+        `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
+      );
+      if (!currentSessionId) {
+        this.logger.warn(
+          `Không tìm thấy sessionId cho người dùng ${payload.sub} trên thiết bị ${this.getDeviceId(request)} khi đăng xuất
+          có thể thiết bị đã bị thay đổi thông tin 
+          `,
+        );
+        throw new UnauthorizedException(
+          'Không tìm thấy sessionId cho thiết bị, có thể thiết bị đã bị thay đổi thông tin',
+        );
+      }
       if (sessionId) {
         await this.redis.del(`refreshToken:${sessionId}`);
       }
 
+      //phải kiểm tra xem deviceId có đúng với trong redis không trước khi xóa,
+      // để tránh xóa dữ liệu rác trên thiết bị
       await this.redis.del(
         `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
       );
@@ -347,7 +371,7 @@ export class AuthService {
         this.getDeviceId(request),
       );
 
-      console.log(
+      this.logger.log(
         `Đã xóa session và device cho user ${payload.sub} trên thiết bị ${this.getDeviceId(request)}`,
       ); // Debug: log thông tin đã xóa session và device
       // 3) Có thể thêm blacklist cho access token nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
@@ -394,6 +418,7 @@ export class AuthService {
   }
 
   private getDeviceId(request: Request): string {
+    //
     const deviceIdFromHeader = request.headers['x-device-id'] as string;
     if (!deviceIdFromHeader) {
       this.logger.warn(
