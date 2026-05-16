@@ -154,4 +154,11 @@ export class UserRepository {
 
     return updatedUser as unknown as UserResponseDto;
   }
+  async changePassword(id: string, newPassword: string): Promise<boolean> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: newPassword },
+    });
+    return true;
+  }
 }

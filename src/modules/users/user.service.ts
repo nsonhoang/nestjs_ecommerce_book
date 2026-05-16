@@ -123,5 +123,37 @@ export class UserService {
 
     return this.userRepository.createUser(userCreateInput);
   }
+
+  async changePassword(userId: string, newPassword: string): Promise<boolean> {
+    const hashedPassword = await bcrypt.hash(newPassword, SULT_ROUNDS);
+    const result = await this.userRepository.changePassword(
+      userId,
+      hashedPassword,
+    );
+    return result;
+  }
   //hàm updateUser này dành cho User và sẽ cập nhật sau
+  async updateUserByUser(
+    userId: string,
+    updateData: Partial<UserUpdateRequestDto>,
+  ): Promise<UserResponseDto> {
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new NotFoundException('KHông tìm thấy người dùng');
+      }
+      // User chỉ được cập nhật thông tin cá nhân, không được cập nhật role
+      if (updateData.roleId) {
+        throw new BadRequestException('Bạn không có quyền cập nhật role');
+      }
+      const updatedUser = await this.userRepository.updateUser(
+        userId,
+        updateData,
+      );
+      return updatedUser;
+    } catch (error) {
+      this.logger.error(`Failed to update user with id ${userId}`, error);
+      throw new BadRequestException('Lỗi khi cập nhật thông tin người dùng');
+    }
+  }
 }

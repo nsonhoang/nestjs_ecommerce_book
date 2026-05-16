@@ -13,7 +13,7 @@ import { AuthRequestDto } from './dto/auth.request.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../users/user.interface';
-import { AuthResponse } from './auth.interface';
+import { AuthResponse, ResetPasswordPayload } from './auth.interface';
 import { Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { JwtPayload, JwtUser } from 'src/strategies/jwt-payload.interface';
@@ -25,9 +25,15 @@ import { AuthRole } from '../roles/roles.enum';
 import { RoleRepository } from '../roles/role.repository';
 import { UserService } from '../users/user.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { pipeline } from 'stream/promises';
+
+import { AuthChangePasswordRequestDto } from './dto/auth-change-password.request.dto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
+const MAX_RESET_PASSWORD_REQUEST = 5;
+const MAX_VALIDATE_OTP_REQUEST = 5;
+const RESET_PASSWORD_TTL = 60 * 60;
 
 @Injectable()
 export class AuthService {
@@ -36,6 +42,7 @@ export class AuthService {
   //gắn thêm deviceId vào token để có thể quản lý thiết bị của user, phục vụ cho việc rate-limit hoặc block thiết bị nếu cần thiết, tránh trường hợp user chia sẻ token cho nhiều người dùng khác nhau
   constructor(
     @Inject(REDIS) private readonly redis: Redis,
+    @InjectQueue('mail_queue') private readonly mailQueue: Queue,
     private readonly userService: UserService, //có thể chuyển thành userService nếu muốn, nhưng do chỉ cần dùng đến hàm findByEmail và createUser nên sẽ không cần thiết phải gọi cả service lên
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
@@ -401,6 +408,159 @@ export class AuthService {
     }
     return 'đăng xuất thành công';
   }
+  // tiếp theo sẽ xây dựng hàm đổi mật khẩu, quên mật khẩu và cải tiến hàm đăng kí tài khoản ,
+  async changePassword(
+    data: AuthChangePasswordRequestDto,
+    jwtUser: JwtUser,
+  ): Promise<string> {
+    const myProfile = await this.userService.getProfile(jwtUser); // láy email
+
+    const { password } = (await this.userService.getUserByEmail(
+      myProfile.email,
+    ))!;
+    // kiểm tra xem mật khẩu cũ có đúng không
+
+    const isMatch = await this.matchPassword(password, data.oldPassword);
+    if (!isMatch) {
+      throw new UnauthorizedException('Mật khẩu cũ không đúng');
+    }
+    //đổi mật khẩu đã yêu cầu asscess token rồi nên kh phải xác thực otp nữa
+    const result = await this.userService.changePassword(
+      jwtUser.userId,
+      data.newPassword,
+    );
+    if (!result) {
+      throw new BadRequestException('Không thể đổi mật khẩu');
+    }
+
+    return 'Đổi mật khẩu thành công';
+  }
+
+  //reset password
+  async resetPassword(email: string): Promise<string> {
+    // kiểm tra xem email có tồn tại trong hệ thống không
+    // nếu có thì tạo mã OTP và token để xác thực khi reset password, sau đó gửi mail cho user
+    // rate limit cho endpoint này để tránh bị spam, có thể \
+    // dùng Redis để lưu số lần yêu cầu reset password của mỗi email,
+    //  nếu vượt quá giới hạn thì block trong một khoảng thời gian nhất định
+    // tạo 1 cái id ngẫu nhiên để làm path cho cho link xác thực otp
+    const user = await this.userService.getUserByEmail(email);
+    if (!user) {
+      throw new NotFoundException(
+        'Không tìm thấy người dùng với email ' + email,
+      );
+    }
+
+    //rate limit cho email này
+    const requestCount = await this.redis.incr(`resetPassword:${email}`);
+    if (requestCount === 1) {
+      await this.redis.expire(`resetPassword:${email}`, RESET_PASSWORD_TTL); // reset password request có thời gian sống 1 giờ
+    }
+    if (requestCount > MAX_RESET_PASSWORD_REQUEST) {
+      throw new BadRequestException(
+        'Bạn đã yêu cầu đặt lại mật khẩu quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+      );
+    }
+
+    const otp = this.generateOTP();
+    const otpToken = this.generateOTPToken();
+    // chỉ cần 1 otp thôi
+    const redisKey = `otp_verify:${otpToken}:${otp}`;
+    await this.redis.set(redisKey, user.email, 'EX', 300); // OTP có thời gian sống 5 phút
+    // OTP token có thời gian sống 5 phút, dùng để xác thực khi người dùng click vào link trong mail,
+    //  nếu token hợp lệ thì mới cho phép nhập OTP,
+    // tránh trường hợp bị lộ email và bị người khác gửi mã OTP về email của mình để chiếm đoạt tài khoản,
+    // vì nếu không có token thì vẫn có thể gửi mã OTP về email của mình nhưng sẽ không thể xác thực được khi click
+    //  vào link trong mail để nhập OTP, nên sẽ không thể chiếm đoạt được tài khoản
+
+    // await this.redis.set(`otpToken:${user.email}`, otpToken, 'EX', 5 * 60);
+
+    // kiểm tra xem trong 5 phút qua có bao nhiêu lần yêu cầu reset password từ email này,
+    //  nếu quá 5 lần thì sẽ block trong 1 giờ, để tránh bị spam
+
+    await this.mailQueue.add('send-reset-password-mail', {
+      to: email,
+      otp: otp,
+      token: otpToken,
+    });
+    return otpToken; // trả về token để client có thể dùng làm path khi click vào link trong mail,
+  }
+
+  async verifyResetPasswordToken(
+    otp: string,
+    otpToken: string,
+  ): Promise<string> {
+    // trả về 1 token chứa trong đó cho email làm payload, token này có thời gian sống ngắn khoảng 15 phút, để đảm bảo xác thực mật khẩu mới
+    const email = await this.validateOTP(otp, otpToken);
+
+    return this.generateResetToken(email);
+  }
+
+  async resetPasswordWithToken(
+    newPassword: string,
+    email: string,
+  ): Promise<string> {
+    try {
+      const user = await this.userService.getUserByEmail(email);
+      if (!user) {
+        throw new NotFoundException(
+          'Không tìm thấy người dùng với email ' + email,
+        );
+      }
+      await this.userService.changePassword(user.id, newPassword);
+      return 'Đặt lại mật khẩu thành công';
+    } catch (error) {
+      this.logger.error('Failed to reset password with token', error);
+      throw new BadRequestException(
+        'Đặt lại mật khẩu thất bại: ' +
+          (error instanceof Error ? error.message : 'Lỗi không xác định'),
+      );
+    }
+  }
+  // validate otp
+  private async validateOTP(otp: string, otpToken: string): Promise<string> {
+    const countValidate = await this.redis.incr(`validateOTP:${otpToken}`);
+    if (countValidate > MAX_VALIDATE_OTP_REQUEST) {
+      // xóa luôn cái otp đấy cho khỏi spam
+      await this.redis.del(`otp_verify:${otpToken}:${otp}`);
+      await this.redis.del(`validateOTP:${otpToken}`);
+
+      throw new BadRequestException(
+        'Bạn đã xác thực OTP quá nhiều lần. Vui lòng thử lại sau.',
+      );
+    }
+    const emailValue = `otp_verify:${otpToken}:${otp}`;
+    const email = await this.redis.get(emailValue);
+    if (!email) {
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    }
+    return email;
+  }
+
+  private generateOTP(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString(); // Tạo mã OTP 6 chữ số
+  }
+
+  //cái này để làm path
+  private generateOTPToken(): string {
+    return crypto.randomBytes(32).toString('hex'); // Tạo token ngẫu nhiên để xác thực OTP, có thể dùng thư viện uuid nếu muốn
+  }
+
+  //cái này dùng để xác thực sau khi xác nhận otp xong
+  private generateResetToken(email: string): string {
+    //cái này chứa pauload là email;
+
+    return this.jwtService.sign(
+      { email: email, type: 'reset-password' }, // có thể thêm thông tin khác vào payload nếu muốn, nhưng do token này chỉ dùng để xác thực khi reset password nên chỉ cần email là đủ, và email này sẽ được mã hóa trong token để tránh bị lộ thông tin
+      {
+        secret:
+          process.env.JWT_RESET_PASSWORD_SECRET ||
+          process.env.JWT_SECRET ||
+          'your-secret-key',
+        expiresIn: '15m', // Token có thời gian sống 15 phút, đủ để người dùng check mail và nhập OTP
+      },
+    );
+  }
 
   private async validate(authRequest: AuthRequestDto): Promise<User> {
     const user = await this.userService.getUserByEmail(authRequest.email);
@@ -410,11 +570,21 @@ export class AuthService {
         'Không tìm thấy người dùng với email ' + authRequest.email,
       );
     }
-    const isMatch = await bcrypt.compare(authRequest.password, user.password);
+    const isMatch = await this.matchPassword(
+      user.password,
+      authRequest.password,
+    );
     if (!isMatch) {
       throw new UnauthorizedException('Mật khẩu không đúng');
     }
     return user;
+  }
+
+  private async matchPassword(
+    userPassword: string,
+    currentPassword: string,
+  ): Promise<boolean> {
+    return await bcrypt.compare(currentPassword, userPassword);
   }
 
   private getDeviceId(request: Request): string {
@@ -469,6 +639,7 @@ export class AuthService {
       },
     );
   }
+
   private generateCsrfToken(): string {
     // Tạo một token ngẫu nhiên, có thể sử dụng thư viện như uuid hoặc crypto
     return crypto.randomBytes(32).toString('hex'); // Ví dụ đơn giản, nên dùng thư viện để tạo token mạnh hơn

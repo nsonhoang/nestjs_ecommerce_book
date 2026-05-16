@@ -9,6 +9,7 @@ import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
 import { APP_GUARD } from '@nestjs/core';
+import { MailModule } from 'src/modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { APP_GUARD } from '@nestjs/core';
     PrismaModule,
     MediaModule,
     NotificationsModule,
+    MailModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }, // GLOBAL

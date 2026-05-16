@@ -8,11 +8,14 @@ export class DeviceAwareThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: Request): Promise<string> {
     // 1) Nếu có Bearer token: dùng hash token làm tracker (ổn định, khó spoof)
     const authHeader = req.headers.authorization;
+
+    // có nên tracking theo userId không??
+
     const token =
       typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
         ? authHeader.slice('Bearer '.length).trim()
         : undefined;
-
+    // có theo token rồi thì dùng token, không có thì dùng deviceId, nếu không có deviceId thì dùng IP, nếu IP cũng không có thì trả về unknown để vẫn áp dụng rate limit chung cho những request không xác định được nguồn gốc
     if (token) {
       const tokenHash = createHash('sha256').update(token).digest('hex');
       return `t:${tokenHash}`;
