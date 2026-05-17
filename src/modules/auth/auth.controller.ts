@@ -55,9 +55,27 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async register(
     @Body() data: AuthRegisterRequestDto,
-  ): Promise<ApiResponse<UserResponseDto>> {
+  ): Promise<ApiResponse<string>> {
     const result = await this.authService.register(data);
-    return ApiResponse.ok(result, 'Đăng ký thành công', HttpStatus.OK);
+    return ApiResponse.ok(
+      result,
+      'Vui lòng kiểm tra email của bạn để xác nhận đăng ký',
+      HttpStatus.OK,
+    );
+  }
+  // cái end point này sẽ sác nhận đăng kí bằng cách xác thực otp nếu thành công sẽ trả về thông tin user
+  @Post('/register/:otpToken')
+  @Throttle({ auth: { ttl: minutes(30), limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  async confirmEmailRegistration(
+    @Body() data: ValidateOtpRequestDto,
+    @Param('otpToken') otpToken: string,
+  ): Promise<ApiResponse<UserResponseDto>> {
+    const result = await this.authService.confirmEmailRegistration(
+      data.otp,
+      otpToken,
+    );
+    return ApiResponse.ok(result, 'Đăng kí thành công', HttpStatus.OK);
   }
 
   @Post('/refresh-token')

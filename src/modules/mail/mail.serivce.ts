@@ -31,7 +31,7 @@ export class MailService {
   async sendMailVerifyEmail(to: string, otp: string) {
     // cái này dùng để gửi mail xác nhận email khi đăng kí tài khoản mới hoặc
 
-    const fileName = 'reset-password.mail.hbs';
+    const fileName = 'confirm-mail.hbs';
 
     const candidates = [
       path.join(__dirname, 'template', fileName), // prod nếu assets nằm cạnh JS

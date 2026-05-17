@@ -26,7 +26,7 @@ import { MailModule } from 'src/modules/mail/mail.module';
           attempts: 3,
           backoff: { type: 'exponential', delay: 1000 },
           removeOnComplete: true,
-          removeOnFail: 1000,
+          removeOnFail: true, // có thể giữ lại để debug
         },
       }),
     }),

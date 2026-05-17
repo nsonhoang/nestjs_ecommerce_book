@@ -12,6 +12,12 @@ import { NotificationsProcessor } from './notifications.processor';
     PrismaModule,
     BullModule.registerQueue({
       name: 'notifications-queue',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
     }),
   ],
   providers: [

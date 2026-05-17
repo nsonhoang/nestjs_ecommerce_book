@@ -30,7 +30,7 @@ export class MailProcessor extends WorkerHost {
         break;
       }
       case 'send-mail-verify-email': {
-        const { to, token, otp } = job.data as SendMailVerifyEmailJobData;
+        const { to, otp, token } = job.data as SendMailVerifyEmailJobData;
         await this.mailService.sendMailVerifyEmail(to, otp);
         break;
       }
@@ -38,6 +38,7 @@ export class MailProcessor extends WorkerHost {
         const { to, otp, token } = job.data as SendMailVerifyEmailJobData;
         console.log('Processing reset password email job for:', to); // Debug: log recipient email
         await this.mailService.sendMailValidateResetPassword(to, otp);
+
         break;
       }
       default:

@@ -34,6 +34,13 @@ const REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60; // 7 ngày tính theo giây
 const MAX_RESET_PASSWORD_REQUEST = 5;
 const MAX_VALIDATE_OTP_REQUEST = 5;
 const RESET_PASSWORD_TTL = 60 * 60;
+const REGISTOR_TIME_EMAIL_REQUEST = 5 * 60;
+const MAX_REGISTER_EMAIL_REQUEST = 5;
+const KEY_OTP_VERIFY_EMAIL = 'otp_verify';
+type ValidateOTPResult = {
+  email: string;
+  token: string;
+};
 
 @Injectable()
 export class AuthService {
@@ -170,9 +177,7 @@ export class AuthService {
     }
   }
 
-  async register(
-    userRegisterDto: AuthRegisterRequestDto,
-  ): Promise<UserResponseDto> {
+  async register(userRegisterDto: AuthRegisterRequestDto): Promise<string> {
     try {
       const existingUser = await this.userService.getUserByEmail(
         userRegisterDto.email,
@@ -180,20 +185,45 @@ export class AuthService {
       if (existingUser) {
         throw new BadRequestException('Email đã được sử dụng');
       }
-
-      const role = await this.roleRepository.findByName(AuthRole.USER);
-      if (!role) {
-        this.logger.error(`Role ${AuthRole.USER} not found in database`);
-        throw new NotFoundException(`Role ${AuthRole.USER} not found`);
+      const requestCount = await this.redis.incr(
+        `registerEmail:${userRegisterDto.email}`,
+      );
+      if (requestCount === 1) {
+        await this.redis.expire(
+          `registerEmail:${userRegisterDto.email}`,
+          REGISTOR_TIME_EMAIL_REQUEST,
+        ); // register email request có thời gian sống 5 phút
+      }
+      if (requestCount > MAX_REGISTER_EMAIL_REQUEST) {
+        throw new BadRequestException(
+          'Email này đã yêu cầu đăng ký quá nhiều lần. Vui lòng thử lại sau 5 phút.',
+        );
       }
 
-      return this.userService.createUser({
-        email: userRegisterDto.email,
-        password: userRegisterDto.password,
-        name: userRegisterDto.name,
-        phone: userRegisterDto.phone,
-        roleId: role.id,
+      // gửi mail vể ở đoạn này
+      const otp = this.generateOTP();
+      const otpToken = this.generateOTPToken();
+
+      const redisKey = `${KEY_OTP_VERIFY_EMAIL}:${otpToken}:${otp}`;
+
+      // cái này để validateOtp thôi
+      await this.redis.set(redisKey, userRegisterDto.email, 'EX', 300); // Dữ liệu tồn tại trong 5 phút
+
+      //user-pending để key
+      await this.redis.set(
+        `user-pending:${otpToken}`,
+        JSON.stringify(userRegisterDto),
+        'EX',
+        300,
+      );
+
+      await this.mailQueue.add('send-mail-verify-email', {
+        to: userRegisterDto.email,
+        otp,
+        token: otpToken,
       });
+
+      return otpToken;
     } catch (error) {
       this.logger.error('Failed to register user', error);
       throw new BadRequestException(
@@ -201,6 +231,38 @@ export class AuthService {
           (error instanceof Error ? error.message : 'Lỗi không xác định'),
       );
     }
+  }
+
+  async confirmEmailRegistration(
+    otp: string,
+    otpToken: string,
+  ): Promise<UserResponseDto> {
+    const validateResult = await this.validateOTP(otp, otpToken);
+    const pendingData = await this.redis.get(`user-pending:${otpToken}`);
+    if (!validateResult || !pendingData) {
+      throw new BadRequestException(
+        'Dữ liệu đăng ký không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
+    const userRegisterDto = JSON.parse(pendingData) as AuthRegisterRequestDto;
+    // lấy xong rồi thì xóa trong redis đi để tránh bị rác dữ liệu
+
+    const role = await this.roleRepository.findByName(AuthRole.USER);
+    if (!role) {
+      this.logger.error(`Role ${AuthRole.USER} not found in database`);
+      throw new NotFoundException(`Role ${AuthRole.USER} not found`);
+    }
+    const createdUser = this.userService.createUser({
+      email: userRegisterDto.email,
+      password: userRegisterDto.password,
+      name: userRegisterDto.name,
+      phone: userRegisterDto.phone,
+      roleId: role.id,
+    });
+    await this.redis.del(`user-pending:${otpToken}`);
+
+    return createdUser;
   }
 
   async refreshToken(
@@ -300,6 +362,10 @@ export class AuthService {
         Number(Date.now()),
         deviceId,
       ); // Cập nhật timestamp trong sorted set để quản lý thiết bị theo thời gian đăng nhập
+      await this.redis.expire(
+        `userDevices:${userLike.userId}`,
+        REFRESH_TOKEN_TIME,
+      ); // Gia hạn thời gian sống của sorted set theo thời gian sống của refresh token
       console.log(
         'đã cập nhật session mới và device mới sau khi refresh token thành công',
       );
@@ -465,7 +531,7 @@ export class AuthService {
     const otp = this.generateOTP();
     const otpToken = this.generateOTPToken();
     // chỉ cần 1 otp thôi
-    const redisKey = `otp_verify:${otpToken}:${otp}`;
+    const redisKey = `${KEY_OTP_VERIFY_EMAIL}:${otpToken}:${otp}`;
     await this.redis.set(redisKey, user.email, 'EX', 300); // OTP có thời gian sống 5 phút
     // OTP token có thời gian sống 5 phút, dùng để xác thực khi người dùng click vào link trong mail,
     //  nếu token hợp lệ thì mới cho phép nhập OTP,
@@ -491,7 +557,7 @@ export class AuthService {
     otpToken: string,
   ): Promise<string> {
     // trả về 1 token chứa trong đó cho email làm payload, token này có thời gian sống ngắn khoảng 15 phút, để đảm bảo xác thực mật khẩu mới
-    const email = await this.validateOTP(otp, otpToken);
+    const { email, token } = await this.validateOTP(otp, otpToken);
 
     return this.generateResetToken(email);
   }
@@ -518,23 +584,29 @@ export class AuthService {
     }
   }
   // validate otp
-  private async validateOTP(otp: string, otpToken: string): Promise<string> {
+  private async validateOTP(
+    otp: string,
+    otpToken: string,
+  ): Promise<ValidateOTPResult> {
     const countValidate = await this.redis.incr(`validateOTP:${otpToken}`);
+    if (countValidate === 1) {
+      await this.redis.expire(`validateOTP:${otpToken}`, 300); // validate OTP có thời gian sống 5 phút, trùng với thời gian sống của OTP
+    }
     if (countValidate > MAX_VALIDATE_OTP_REQUEST) {
-      // xóa luôn cái otp đấy cho khỏi spam
-      await this.redis.del(`otp_verify:${otpToken}:${otp}`);
-      await this.redis.del(`validateOTP:${otpToken}`);
-
       throw new BadRequestException(
         'Bạn đã xác thực OTP quá nhiều lần. Vui lòng thử lại sau.',
       );
     }
-    const emailValue = `otp_verify:${otpToken}:${otp}`;
+    const emailValue = `${KEY_OTP_VERIFY_EMAIL}:${otpToken}:${otp}`;
     const email = await this.redis.get(emailValue);
     if (!email) {
       throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
     }
-    return email;
+    // xóa luôn cái otp đấy cho khỏi spam
+    await this.redis.del(`${KEY_OTP_VERIFY_EMAIL}:${otpToken}:${otp}`);
+    await this.redis.del(`validateOTP:${otpToken}`);
+
+    return { email, token: otpToken }; // trả về email để làm payload cho token xác thực khi reset password, còn otpToken để xóa cái OTP trong Redis sau khi đã xác thực thành công, tránh bị lộ OTP và bị người khác sử dụng lại để chiếm đoạt tài khoản
   }
 
   private generateOTP(): string {
