@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from 'generated/prisma/client';
+import { OrderStatus } from 'generated/prisma/enums';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderResponseDto } from './dto/order.response.dto';
@@ -201,6 +202,21 @@ export class OrdersRepository {
       where: { userId },
       include: orderInclude,
     });
+  }
+
+  async hasPurchasedBook(userId: string, bookId: string): Promise<boolean> {
+    const match = await this.prisma.orderItem.findFirst({
+      where: {
+        bookId,
+        order: {
+          userId,
+          status: OrderStatus.DELIVERED,
+        },
+      },
+      select: { id: true },
+    });
+
+    return Boolean(match);
   }
   async updateStatus() {
     //nếu hủy đơn thì phải cộng số lượng lại vào kho

@@ -188,9 +188,6 @@ export class BookService {
 
       // Xóa ảnh liên quan đến sách trên Cloudinary và trong database
       await this.imageBookService.deleteImagesByBookId(id);
-      console.log('Đã xóa ảnh liên quan đến sách với id:', id);
-
-      await this.imageBookService.deleteImagesByBookId(id);
       // Sau khi đã xóa ảnh, tiến hành xóa sách
 
       // Xóa thumbnail trên Cloudinary

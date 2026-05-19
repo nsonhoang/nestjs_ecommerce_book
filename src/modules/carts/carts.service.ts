@@ -1,8 +1,9 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
+  InternalServerErrorException,
   Logger,
-  UnauthorizedException,
 } from '@nestjs/common';
 
 import {
@@ -39,8 +40,15 @@ export class CartsService {
       const newItem = await this.cartRepository.addItemToCart(cartItemData);
       return newItem;
     } catch (error) {
-      this.logger.error('Error adding item to cart', error);
-      throw error;
+      this.logger.error('Failed to add item to cart', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Không thể thêm item vào giỏ hàng',
+      );
     }
   }
 
@@ -76,8 +84,15 @@ export class CartsService {
     try {
       return this.cartRepository.updateItem(updateCartDto, itemId, userId);
     } catch (error) {
-      this.logger.error('Error updating cart item', error);
-      throw error;
+      this.logger.error('Failed to update cart item', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Không thể cập nhật item trong giỏ hàng',
+      );
     }
   }
 
@@ -90,9 +105,8 @@ export class CartsService {
     userId: string,
   ): Promise<number> {
     const result = await this.cartRepository.deleteMany(itemIds, userId);
-    console.log('Result of deleteMany:', result);
     if (result === 0) {
-      this.logger.error('Error deleting multiple cart items');
+      this.logger.error('Failed to delete multiple cart items');
       throw new BadRequestException(
         'Xóa không thành công, item đó có thể không có trong giỏ hàng',
       );

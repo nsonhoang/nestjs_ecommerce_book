@@ -17,7 +17,7 @@ import {
 } from 'express';
 import { ApiResponse } from 'src/common/api-response';
 import { AuthService } from './auth.service';
-import { AuthResponse, ResetPasswordPayload } from './auth.interface';
+import { AuthResponse } from './auth.interface';
 import { AuthRequestDto } from './dto/auth.request.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
@@ -100,7 +100,6 @@ export class AuthController {
   ): Promise<ApiResponse<string>> {
     const authHeader = req.headers['authorization'];
     const accessToken = authHeader?.split(' ')[1];
-    console.log('Access Token:', accessToken); // Debug: log access token
     const result = await this.authService.logout(accessToken!, req, fcmToken);
     return ApiResponse.ok(result, 'Logout successful', HttpStatus.OK);
   }

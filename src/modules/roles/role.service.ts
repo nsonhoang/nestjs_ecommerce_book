@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { RolesRequestDto } from '../roles/dto/roles.dto.request';
@@ -9,6 +10,8 @@ import { RoleRepository } from './role.repository';
 
 @Injectable()
 export class RoleService {
+  private readonly logger = new Logger(RoleService.name);
+
   constructor(private readonly roleRepository: RoleRepository) {}
 
   getHello(): string {
@@ -18,9 +21,8 @@ export class RoleService {
     const dataUpperCase = { ...data, name: data.name.toUpperCase() };
 
     const existing = await this.roleRepository.findByName(dataUpperCase.name);
-    console.log('existing', existing);
     if (existing) {
-      console.log('Role name đã tồn tại');
+      this.logger.warn('Attempted to create duplicate role name');
       throw new BadRequestException('Role name đã tồn tại');
     }
     return await this.roleRepository.createRole(dataUpperCase);

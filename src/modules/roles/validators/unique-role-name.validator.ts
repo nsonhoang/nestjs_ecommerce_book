@@ -18,12 +18,12 @@ export class UniqueRoleNameValidator implements ValidatorConstraintInterface {
     const upperName = value.toUpperCase();
 
     const exists = await this.roleRepository.findByName(upperName);
-    console.log('exists', exists);
     // findByName hiện trả về boolean nên dùng trực tiếp:
     return !exists;
   }
 
   defaultMessage(args: ValidationArguments): string {
+    void args;
     return 'Role name đã tồn tại';
   }
 }

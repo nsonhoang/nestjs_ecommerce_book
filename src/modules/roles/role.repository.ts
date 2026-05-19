@@ -21,7 +21,6 @@ export class RoleRepository {
   }
 
   async findByName(name: string): Promise<RolesResponseDto | null> {
-    console.log('name', name);
     const role = await this.prisma.role.findUnique({
       where: {
         name,

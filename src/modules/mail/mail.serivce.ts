@@ -25,7 +25,17 @@ export class MailService {
     });
   }
 
-  async sendMail(to: string, subject: string, text: string, html?: string) {} //cái này dùng để custom
+  async sendMail(to: string, subject: string, text: string, html?: string) {
+    const mailOptions: MailOptions = {
+      from: this.configService.get<string>('MAIL_FROM'),
+      to,
+      subject,
+      text,
+      html,
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  } //cái này dùng để custom
 
   //không gửi token  mà gửi otp hợp lí hơn // gắn 1 token - otp  token để path url ứng với otp đấy
   async sendMailVerifyEmail(to: string, otp: string) {
@@ -60,7 +70,6 @@ export class MailService {
   // cái này là để validate quên mật khẩu // cũng tương tự là gửi mã otp về chứ không gửi token
   async sendMailValidateResetPassword(to: string, otp: string) {
     try {
-      console.log('Sending reset password email to:', to); // Debug: log recipient email
       const fileName = 'reset-password.mail.hbs';
 
       const candidates = [
@@ -92,7 +101,6 @@ export class MailService {
 
       // const resetPasswordLink = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${token}`;
       const htmlSend = template({ otp });
-      console.log('mailfrom env:', this.configService.get<string>('MAIL_FROM')); // Debug: log mail from config
       const mailOptions: MailOptions = {
         from: this.configService.get<string>('MAIL_FROM'),
         to,
@@ -102,9 +110,8 @@ export class MailService {
       };
       await this.transporter.sendMail(mailOptions);
     } catch (error) {
-      this.logger.error(
-        `Failed to send reset password email to ${to}: ${error}`,
-      );
+      this.logger.error('Failed to send reset password email', error);
+      throw error;
     }
   }
 }

@@ -36,15 +36,12 @@ export class ImageBookService {
   async deleteImagesByBookId(bookId: string) {
     // 1. Lấy danh sách ảnh từ DB
     const images = await this.imageBookRepository.getImagesByBookId(bookId);
-
-    console.log('images', images);
     const publicIds = images.map((img) => img.publicId);
 
     // 2. KIỂM TRA: Nếu có ảnh thì mới gọi Cloudinary
     if (publicIds.length > 0) {
       try {
         await this.mediaService.deleteMultipleFiles(publicIds);
-        console.log(`Đã xóa ${publicIds.length} ảnh trên Cloudinary`);
       } catch (error) {
         // Chỉ log lỗi, không 'throw' để tránh làm hỏng luồng xóa Book
         this.logger.error(
@@ -53,8 +50,7 @@ export class ImageBookService {
         );
       }
     } else {
-      // Nếu mảng rỗng, chỉ cần log thông báo và đi tiếp
-      console.log('Sách này không có ảnh, bỏ qua bước xóa trên Cloudinary.');
+      // Nếu mảng rỗng, không cần gọi Cloudinary.
     }
 
     // 3. Luôn thực hiện xóa trong DB
@@ -110,8 +106,6 @@ export class ImageBookService {
   async deleteImageByPublicId(publicId: string[]): Promise<void> {
     try {
       await this.mediaService.deleteMultipleFiles(publicId);
-      console.log('Xóa thành công rồi nhé', publicId);
-
       await this.imageBookRepository.deleteImagesByPublicIds(publicId);
     } catch (error) {
       this.logger.error('Error deleting image', error);

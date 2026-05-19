@@ -112,8 +112,6 @@ export class OrdersService {
         user.userId,
       );
 
-      console.log('Địa chỉ giao hàng:', address);
-
       const orderCode = this.generateOrderCode();
 
       const createdOrder = await this.prisma.$transaction(async (tx) => {
@@ -252,6 +250,15 @@ export class OrdersService {
       }
 
       throw new InternalServerErrorException('Không thể tạo đơn hàng');
+    }
+  }
+
+  async hasPurchasedBook(userId: string, bookId: string): Promise<boolean> {
+    try {
+      return await this.ordersRepository.hasPurchasedBook(userId, bookId);
+    } catch (error) {
+      this.logger.error('Failed to check purchased book', error);
+      throw new InternalServerErrorException('Failed to check purchased book');
     }
   }
 

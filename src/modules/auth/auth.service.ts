@@ -16,7 +16,7 @@ import { AuthRequestDto } from './dto/auth.request.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../users/user.interface';
-import { AuthResponse, ResetPasswordPayload } from './auth.interface';
+import { AuthResponse } from './auth.interface';
 import { Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { JwtPayload, JwtUser } from 'src/strategies/jwt-payload.interface';
@@ -374,8 +374,8 @@ export class AuthService {
         `userDevices:${userLike.userId}`,
         REFRESH_TOKEN_TIME,
       ); // Gia hạn thời gian sống của sorted set theo thời gian sống của refresh token
-      console.log(
-        'đã cập nhật session mới và device mới sau khi refresh token thành công',
+      this.logger.debug(
+        'Refresh token: updated session and device successfully',
       );
 
       const isProd = process.env.NODE_ENV === 'production';
@@ -419,7 +419,6 @@ export class AuthService {
     try {
       // 2) Xóa refresh token trong Redis dựa trên userId lấy được từ access token
       const payload: JwtPayload = this.verifyToken(accessToken);
-      console.log('Logout payload:', payload); // Debug: log payload
       //lấy sessionId theo deviceId để xóa refresh token, tránh trường hợp user đăng xuất trên một thiết bị nhưng lại xóa luôn refresh token của các thiết bị khác
       const sessionId = await this.redis.get(
         `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
@@ -468,7 +467,7 @@ export class AuthService {
       if (fcmToken) {
         this.notificationsService.removeDeviceToken(fcmToken).catch((error) => {
           this.logger.error(
-            `Failed to remove device token ${fcmToken} during logout:`,
+            'Failed to remove device token during logout',
             error,
           );
         });
@@ -567,7 +566,7 @@ export class AuthService {
     otpToken: string,
   ): Promise<string> {
     // trả về 1 token chứa trong đó cho email làm payload, token này có thời gian sống ngắn khoảng 15 phút, để đảm bảo xác thực mật khẩu mới
-    const { email, token } = await this.validateOTP(otp, otpToken);
+    const { email } = await this.validateOTP(otp, otpToken);
 
     return this.generateResetToken(email);
   }

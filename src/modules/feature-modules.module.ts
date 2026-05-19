@@ -15,6 +15,7 @@ import { PromotionModule } from './promotion/promotion.module';
 import { OrdersModule } from './orders/orders.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { ShipmentsModule } from './shipments/shipments.module';
+import { ReviewModule } from './review/review.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ShipmentsModule } from './shipments/shipments.module';
     OrdersModule,
     VouchersModule,
     ShipmentsModule,
+    ReviewModule,
   ],
   exports: [
     UserModule,
@@ -48,6 +50,7 @@ import { ShipmentsModule } from './shipments/shipments.module';
     OrdersModule,
     VouchersModule,
     ShipmentsModule,
+    ReviewModule,
   ],
 })
 export class FeatureModulesModule {}
