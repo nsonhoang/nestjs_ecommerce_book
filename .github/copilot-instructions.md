@@ -1,10 +1,10 @@
-- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+cấu trúc code phải luôn tuân thủ nguyên tắc #file:../docs/modular-monolith.md
+chỗ try catch ỏ phần catch phải có theo this.logger.error(`Failed to <operation> user`, error);
 
-- [x] Clarify Project Requirements
-- [x] Scaffold the Project
-- [x] Customize the Project
-- [ ] Install Required Extensions
-      [x] Install Required Extensions
-      [x] Compile the Project
-      [x] Create and Run Task
-- [ ] Ensure Documentation is Complete
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(`Failed to <operation> user`);
+
+---

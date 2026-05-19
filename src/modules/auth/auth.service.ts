@@ -1,8 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
+  HttpException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -169,11 +172,13 @@ export class AuthService {
         tokenType: 'Bearer',
       };
     } catch (error) {
-      this.logger.error('Đăng nhập thất bại', error);
-      throw new UnauthorizedException(
-        'Đăng nhập thất bại: ' +
-          (error instanceof Error ? error.message : 'Lỗi không xác định'),
-      );
+      this.logger.error('Failed to login user', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Đăng nhập thất bại');
     }
   }
 
@@ -183,7 +188,7 @@ export class AuthService {
         userRegisterDto.email,
       );
       if (existingUser) {
-        throw new BadRequestException('Email đã được sử dụng');
+        throw new ConflictException('Email đã được sử dụng');
       }
       const requestCount = await this.redis.incr(
         `registerEmail:${userRegisterDto.email}`,
@@ -195,8 +200,9 @@ export class AuthService {
         ); // register email request có thời gian sống 5 phút
       }
       if (requestCount > MAX_REGISTER_EMAIL_REQUEST) {
-        throw new BadRequestException(
+        throw new HttpException(
           'Email này đã yêu cầu đăng ký quá nhiều lần. Vui lòng thử lại sau 5 phút.',
+          429, // Too Many Requests
         );
       }
 
@@ -226,10 +232,12 @@ export class AuthService {
       return otpToken;
     } catch (error) {
       this.logger.error('Failed to register user', error);
-      throw new BadRequestException(
-        'Đăng ký thất bại: ' +
-          (error instanceof Error ? error.message : 'Lỗi không xác định'),
-      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Đăng ký thất bại');
     }
   }
 
@@ -467,10 +475,12 @@ export class AuthService {
       }
     } catch (error) {
       this.logger.error('Failed to logout', error);
-      throw new UnauthorizedException(
-        'Đăng xuất thất bại: ' +
-          (error instanceof Error ? error.message : 'Lỗi không xác định'),
-      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Đăng xuất thất bại');
     }
     return 'đăng xuất thành công';
   }

@@ -21,7 +21,10 @@ import { AuthRole } from '../roles/roles.enum';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { UserQueryDto } from './dto/user-query.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
-import { UserUpdateRequestDto } from './dto/user-update.request.dto';
+import {
+  UserUpdateByUserRequestDto,
+  UserUpdateRequestDto,
+} from './dto/user-update.request.dto';
 
 export type RequestWithUser = Request & { user: JwtUser };
 
@@ -37,6 +40,18 @@ export class UserController {
     const user = await this.userService.getProfile(req.user);
 
     return ApiResponse.ok(user, 'Lấy thông tin người dùng thành công');
+  }
+  @Patch('/profile')
+  @UseGuards(JwtAuthGuard)
+  async updateUserByUser(
+    @Req() req: RequestWithUser,
+    @Body() data: UserUpdateByUserRequestDto,
+  ): Promise<ApiResponse<UserResponseDto>> {
+    const updatedUser = await this.userService.updateUserByUser(
+      req.user.userId,
+      data,
+    );
+    return ApiResponse.ok(updatedUser, 'Cập nhật thông tin thành công');
   }
 
   @Get()

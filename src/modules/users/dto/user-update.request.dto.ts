@@ -1,3 +1,4 @@
+import { OmitType } from '@nestjs/mapped-types';
 import {
   IsNotEmpty,
   IsOptional,
@@ -26,3 +27,7 @@ export class UserUpdateRequestDto {
   @IsString()
   roleId?: string; //cái này phải sử dụng enum để validate, nhưng tạm thời để string trước, sau này sẽ refactor lại sau khi có enum Role trong database và codebase
 }
+
+export class UserUpdateByUserRequestDto extends OmitType(UserUpdateRequestDto, [
+  'roleId',
+] as const) {}
