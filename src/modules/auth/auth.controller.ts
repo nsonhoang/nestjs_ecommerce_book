@@ -29,13 +29,30 @@ import { ResetPasswordRequestDto } from './dto/reset-password.requset.dto';
 import { ResetPasswordConfirmGuard } from 'src/strategies/reset-passwword-confirm.decorator';
 import { ValidateOtpRequestDto } from './dto/validate-otp.request.dto';
 import { ConfirmResetPasswordRequestDto } from './dto/confirm-reset-password.requset.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiHeader,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import { LogoutRequestDto } from './dto/logout-request.dto';
 
 type RequestWithEmail = ExpressRequest & { user: string }; // đặt user là do mặc định của jwtModule này là thằng sẽ trả vể ở hàm validate của strategy
+@ApiTags('Auth')
 @Controller('/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // lấy cả thông tin Os và FCM token để lưu vào database, sau này có thể dùng để gửi thông báo đến thiết bị của user
+  @ApiOperation({ summary: 'Đăng nhập' })
+  @ApiBody({ type: AuthRequestDto })
+  @ApiHeader({ name: 'x-device-id', required: true })
+  @ApiOkResponse({ description: 'Đăng nhập thành công' })
   @Throttle({ auth: { ttl: 60000 * 5, limit: 5 } })
   @Post('/login')
   @HttpCode(HttpStatus.OK)
@@ -50,6 +67,9 @@ export class AuthController {
 
   //Đăng kí tài khoản mới, có thể thêm các trường như name, phone,... vào AuthRequestDto nếu cần
   // cái này kh cần ratelimit vì sau này sẽ sử dụng node mail đẻ gửi emaIL xác nhận đăng ký
+  @ApiOperation({ summary: 'Đăng ký tài khoản' })
+  @ApiBody({ type: AuthRegisterRequestDto })
+  @ApiOkResponse({ description: 'Đăng ký thành công, gửi OTP qua email' })
   @Post('/register')
   @Throttle({ auth: { ttl: minutes(30), limit: 5 } })
   @HttpCode(HttpStatus.OK)
@@ -64,6 +84,10 @@ export class AuthController {
     );
   }
   // cái end point này sẽ sác nhận đăng kí bằng cách xác thực otp nếu thành công sẽ trả về thông tin user
+  @ApiOperation({ summary: 'Xác nhận email đăng ký bằng OTP' })
+  @ApiParam({ name: 'otpToken', description: 'OTP token xác nhận email' })
+  @ApiBody({ type: ValidateOtpRequestDto })
+  @ApiOkResponse({ description: 'Xác nhận email thành công' })
   @Post('/register/:otpToken')
   @Throttle({ auth: { ttl: minutes(30), limit: 5 } })
   @HttpCode(HttpStatus.OK)
@@ -78,6 +102,11 @@ export class AuthController {
     return ApiResponse.ok(result, 'Đăng kí thành công', HttpStatus.OK);
   }
 
+  // api phải có x-device-id trên header đẻ xác đinh thiết bị nào đang request để refresh token
+  @ApiOperation({ summary: 'Refresh token' })
+  @ApiHeader({ name: 'x-csrf-token', required: true })
+  @ApiHeader({ name: 'x-device-id', required: true })
+  @ApiOkResponse({ description: 'Refresh token thành công' })
   @Post('/refresh-token')
   @Throttle({ auth: { ttl: 60000 * 5, limit: 20 } })
   @HttpCode(HttpStatus.OK)
@@ -94,17 +123,35 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @Throttle({ auth: { ttl: 60000 * 5, limit: 20 } })
+  @ApiBearerAuth() // Giúp hiển thị ổ khóa nhập Token JWT trên Swagger UI
+  @ApiOperation({ summary: 'Đăng xuất khỏi hệ thống' })
+  @ApiOkResponse({
+    description: 'Đăng xuất thành công, hủy bỏ các phiên làm việc liên quan.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Token xác thực không hợp lệ hoặc đã hết hạn.',
+  })
   async logout(
     @Req() req: ExpressRequest,
-    @Body('fcmToken') fcmToken?: string,
+    @Body() logoutDto: LogoutRequestDto,
   ): Promise<ApiResponse<string>> {
-    const authHeader = req.headers['authorization'];
-    const accessToken = authHeader?.split(' ')[1];
-    const result = await this.authService.logout(accessToken!, req, fcmToken);
+    // Controller sạch bóng logic bóc tách chuỗi, đẩy hết trách nhiệm hạ tầng/nghiệp vụ xuống Service
+    const authHeader = req.headers['authorization'] || '';
+
+    const result = await this.authService.logout(
+      authHeader,
+      req,
+      logoutDto.fcmToken,
+    );
+
     return ApiResponse.ok(result, 'Logout successful', HttpStatus.OK);
   }
 
   // 1 endpoint để đổi mật khẩu nhưng phải ratelimit cho nó 5 lần trong 30p
+  @ApiOperation({ summary: 'Đổi mật khẩu' })
+  @ApiBearerAuth()
+  @ApiBody({ type: AuthChangePasswordRequestDto })
+  @ApiOkResponse({ description: 'Đổi mật khẩu thành công' })
   @Post('/change-password')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
@@ -120,6 +167,9 @@ export class AuthController {
     );
   }
 
+  @ApiOperation({ summary: 'Yêu cầu đặt lại mật khẩu' })
+  @ApiBody({ type: ResetPasswordRequestDto })
+  @ApiOkResponse({ description: 'Đã gửi OTP đặt lại mật khẩu' })
   @Post('/reset-password')
   @Throttle({ auth: { ttl: minutes(30), limit: 5 } })
   @HttpCode(HttpStatus.OK)
@@ -134,6 +184,10 @@ export class AuthController {
     );
   }
   // cái này dùng để xác thực otp
+  @ApiOperation({ summary: 'Xác thực OTP đặt lại mật khẩu' })
+  @ApiParam({ name: 'otpToken', description: 'OTP token đặt lại mật khẩu' })
+  @ApiBody({ type: ValidateOtpRequestDto })
+  @ApiOkResponse({ description: 'Xác thực OTP thành công' })
   @Post('/reset-password/:otpToken')
   // giới hạn 1 OTP chỉ được xác thực 5 lần
   @Throttle({ auth: { ttl: minutes(5), limit: 5 } })
@@ -149,6 +203,10 @@ export class AuthController {
     return ApiResponse.ok(result, 'OTP verified successfully', HttpStatus.OK);
   }
   // cái này dùng để đổi mật khẩu luôn
+  @ApiOperation({ summary: 'Xác nhận đổi mật khẩu bằng token' })
+  @ApiBody({ type: ConfirmResetPasswordRequestDto })
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Đổi mật khẩu thành công' })
   @Patch('/reset-password/confirm')
   @Throttle({ auth: { ttl: minutes(5), limit: 5 } })
   @UseGuards(ResetPasswordConfirmGuard)

@@ -23,7 +23,16 @@ import { GhnCalculateShippingRequestDto } from './dto/calculate-shipping.request
 import { ShipmentsService } from '../shipments/shipments.service';
 import { GhnWebhookGuard } from './ghn-webhook.guard';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('GHN')
 @Controller('v1/ghn')
 export class GhnController {
   constructor(
@@ -32,12 +41,17 @@ export class GhnController {
     private readonly configService: ConfigService,
   ) {}
 
+  @ApiOperation({ summary: 'Lấy danh sách tỉnh/thành' })
+  @ApiOkResponse({ description: 'Lấy danh sách tỉnh/thành thành công' })
   @Get('provinces')
   async getProvinces(): Promise<ApiResponse<ProvinceResponse[]>> {
     const provinces = await this.ghnService.getProvincesFromDb();
     return ApiResponse.ok(provinces, 'Lấy danh sách tỉnh/thành thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách quận/huyện theo tỉnh' })
+  @ApiQuery({ name: 'provinceId', required: true })
+  @ApiOkResponse({ description: 'Lấy danh sách quận/huyện thành công' })
   @Get('districts')
   async getDistricts(
     @Query() query: GetDistrictsQueryDto,
@@ -48,6 +62,9 @@ export class GhnController {
     return ApiResponse.ok(districts, 'Lấy danh sách quận/huyện thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách phường/xã theo quận/huyện' })
+  @ApiQuery({ name: 'districtId', required: true })
+  @ApiOkResponse({ description: 'Lấy danh sách phường/xã thành công' })
   @Get('wards')
   async getWards(
     @Query() query: GetWardsQueryDto,
@@ -56,6 +73,10 @@ export class GhnController {
     return ApiResponse.ok(wards, 'Lấy danh sách phường/xã thành công');
   }
 
+  @ApiOperation({ summary: 'Tính phí vận chuyển' })
+  @ApiBearerAuth()
+  @ApiBody({ type: GhnCalculateShippingRequestDto })
+  @ApiOkResponse({ description: 'Tính phí vận chuyển thành công' })
   @Post('calculate-shipping')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
@@ -69,6 +90,14 @@ export class GhnController {
 
   // xử lí webhook cập nhật phí vận chuyển từ GHN
   // custom useguard
+  @ApiOperation({ summary: 'Webhook GHN cập nhật vận chuyển' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+    },
+  })
+  @ApiOkResponse({ description: 'Webhook xử lý thành công' })
   @Post('/webhook')
   @UseGuards(GhnWebhookGuard)
   async handleGhnWebhook(

@@ -18,11 +18,24 @@ import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CategoryRequestDto } from './dto/categories.request.dto';
 import { CategoryResponseDto } from './dto/categories.response.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Categories')
 @Controller('/v1/categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
+  @ApiOperation({ summary: 'Tạo danh mục (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiBody({ type: CategoryRequestDto })
+  @ApiOkResponse({ description: 'Tạo danh mục thành công' })
   @Post('')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -36,6 +49,11 @@ export class CategoryController {
     );
   }
 
+  @ApiOperation({ summary: 'Cập nhật danh mục (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Category id' })
+  @ApiBody({ type: CategoryRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật danh mục thành công' })
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -50,6 +68,8 @@ export class CategoryController {
     );
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách danh mục' })
+  @ApiOkResponse({ description: 'Lấy danh sách danh mục thành công' })
   @Get('')
   async getCategories(): Promise<ApiResponse<CategoryResponseDto[]>> {
     return ApiResponse.ok(
@@ -58,6 +78,9 @@ export class CategoryController {
     );
   }
 
+  @ApiOperation({ summary: 'Lấy danh mục theo id' })
+  @ApiParam({ name: 'id', description: 'Category id' })
+  @ApiOkResponse({ description: 'Lấy danh mục thành công' })
   @Get(':id')
   async getCategoryById(
     @Param('id') id: string,
@@ -68,6 +91,10 @@ export class CategoryController {
     );
   }
 
+  @ApiOperation({ summary: 'Xóa danh mục (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Category id' })
+  @ApiOkResponse({ description: 'Xóa danh mục thành công' })
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)

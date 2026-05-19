@@ -24,11 +24,25 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from '../roles/roles.enum';
 import { PromotionNotifyRequestDto } from './dto/promotion-notify.request.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Promotions')
 @Controller('/v1/promotions')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 
+  @ApiOperation({ summary: 'Tạo khuyến mãi (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiBody({ type: PromotionRequestDto })
+  @ApiOkResponse({ description: 'Tạo khuyến mãi thành công' })
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -46,6 +60,11 @@ export class PromotionController {
     );
   }
 
+  @ApiOperation({ summary: 'Gửi thông báo khuyến mãi (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Promotion id' })
+  @ApiBody({ type: PromotionNotifyRequestDto })
+  @ApiOkResponse({ description: 'Gửi thông báo khuyến mãi thành công' })
   @Post('/:id/notify')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -64,6 +83,11 @@ export class PromotionController {
     return ApiResponse.message('Gửi thông báo thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách khuyến mãi' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'keyword', required: false })
+  @ApiOkResponse({ description: 'Lấy danh sách khuyến mãi thành công' })
   @Get()
   async getAllPromotions(
     @Query() query: PaginatePromotionDto,
@@ -75,6 +99,8 @@ export class PromotionController {
     );
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách khuyến mãi đang diễn ra' })
+  @ApiOkResponse({ description: 'Lấy khuyến mãi đang diễn ra thành công' })
   @Get('/active')
   async getActivePromotions(): Promise<ApiResponse<PromotionResponseDto[]>> {
     const promotions = await this.promotionService.getActivePromotions();
@@ -84,6 +110,11 @@ export class PromotionController {
     );
   }
 
+  @ApiOperation({ summary: 'Cập nhật khuyến mãi (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Promotion id' })
+  @ApiBody({ type: PromotionUpdateRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật khuyến mãi thành công' })
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -103,6 +134,9 @@ export class PromotionController {
     );
   }
 
+  @ApiOperation({ summary: 'Lấy khuyến mãi theo id' })
+  @ApiParam({ name: 'id', description: 'Promotion id' })
+  @ApiOkResponse({ description: 'Lấy khuyến mãi thành công' })
   @Get('/:id')
   async getPromotionById(
     @Param('id', ParseUUIDPipe) id: string,
@@ -115,6 +149,10 @@ export class PromotionController {
     );
   }
 
+  @ApiOperation({ summary: 'Xóa khuyến mãi (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Promotion id' })
+  @ApiOkResponse({ description: 'Xóa khuyến mãi thành công' })
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)

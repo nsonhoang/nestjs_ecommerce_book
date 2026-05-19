@@ -24,11 +24,25 @@ import { VouchersRequestDto } from 'src/modules/vouchers/dto/vouchers.request.dt
 import { VouchersResponseDto } from 'src/modules/vouchers/dto/vouchers.response.dto';
 import { VouchersUpdateRequestDto } from 'src/modules/vouchers/dto/vouchers-update.request.dto';
 import { VouchersService } from './vouchers.service';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Vouchers')
 @Controller('/v1/vouchers')
 export class VouchersController {
   constructor(private readonly vouchersService: VouchersService) {}
 
+  @ApiOperation({ summary: 'Tạo voucher (admin)' })
+  @ApiBearerAuth()
+  @ApiBody({ type: VouchersRequestDto })
+  @ApiOkResponse({ description: 'Tạo voucher thành công' })
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
@@ -40,6 +54,11 @@ export class VouchersController {
     return ApiResponse.ok(voucher, 'Tạo voucher thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách voucher' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'keyword', required: false })
+  @ApiOkResponse({ description: 'Lấy danh sách voucher thành công' })
   @Get()
   async getVouchers(
     @Query() query: PaginateVouchersDto,
@@ -48,6 +67,9 @@ export class VouchersController {
     return ApiResponse.ok(vouchers, 'Lấy danh sách voucher thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy voucher theo id' })
+  @ApiParam({ name: 'id', description: 'Voucher id' })
+  @ApiOkResponse({ description: 'Lấy voucher thành công' })
   @Get('/:id')
   async getVoucherById(
     @Param('id', ParseUUIDPipe) id: string,
@@ -56,6 +78,11 @@ export class VouchersController {
     return ApiResponse.ok(voucher, 'Lấy thông tin voucher thành công');
   }
 
+  @ApiOperation({ summary: 'Cập nhật voucher (admin)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Voucher id' })
+  @ApiBody({ type: VouchersUpdateRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật voucher thành công' })
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
@@ -68,6 +95,10 @@ export class VouchersController {
     return ApiResponse.ok(voucher, 'Cập nhật voucher thành công');
   }
 
+  @ApiOperation({ summary: 'Xóa voucher (admin)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Voucher id' })
+  @ApiOkResponse({ description: 'Xóa voucher thành công' })
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)

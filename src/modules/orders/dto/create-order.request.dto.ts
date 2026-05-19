@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsNotEmpty,
@@ -8,9 +9,11 @@ import {
 import { OrderPaymentMethod } from 'generated/prisma/enums';
 
 export class CreateOrderRequestDto {
+  @ApiProperty({ example: ['cart-item-id'] })
   @IsNotEmpty({ message: 'Chọn 1 sản phẩm để mua' })
   cardItemIds!: string[]; // cho chọn danh sách các item trong đơn hàng
 
+  @ApiProperty({ enum: OrderPaymentMethod, example: OrderPaymentMethod.COD })
   @IsEnum(OrderPaymentMethod, {
     message: 'Phương thức thanh toán không hợp lệ',
   })
@@ -50,8 +53,10 @@ export class CreateOrderRequestDto {
 
   @IsString()
   @IsOptional()
+  @ApiPropertyOptional({ example: 'Giao giờ hành chính' })
   note?: string;
 
+  @ApiPropertyOptional({ example: 'SUMMER2026' })
   @IsOptional()
   @IsString()
   @MaxLength(50)

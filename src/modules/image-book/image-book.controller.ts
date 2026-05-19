@@ -23,11 +23,23 @@ import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from '../roles/roles.enum';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Book Images')
 @Controller('/v1/book-images')
 export class ImageBookController {
   constructor(private readonly imageBookService: ImageBookService) {}
 
+  @ApiOperation({ summary: 'Lấy danh sách ảnh sách' })
+  @ApiOkResponse({ description: 'Lấy danh sách ảnh sách thành công' })
   @Get('')
   async getImages() {
     const images = await this.imageBookService.getImages();
@@ -40,6 +52,20 @@ export class ImageBookController {
   //   return ApiResponse.ok(images, 'Lấy danh sách ảnh theo sách thành công');
   // }
 
+  @ApiOperation({ summary: 'Upload ảnh sách (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: { type: 'array', items: { type: 'string', format: 'binary' } },
+        bookId: { type: 'string' },
+        position: { type: 'string' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Upload ảnh sách thành công' })
   @Post('')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -76,6 +102,17 @@ export class ImageBookController {
     return ApiResponse.ok(requst, 'Upload danh sách ảnh cho sách thành công');
   }
 
+  @ApiOperation({ summary: 'Xóa ảnh sách theo publicId (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        publicId: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Xóa ảnh sách thành công' })
   @Delete()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -85,6 +122,10 @@ export class ImageBookController {
     return ApiResponse.message('Xóa ảnh sách thành công');
   }
 
+  @ApiOperation({ summary: 'Xóa ảnh sách theo id (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Book image id' })
+  @ApiOkResponse({ description: 'Xóa ảnh sách thành công' })
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)

@@ -26,13 +26,26 @@ import {
   UserUpdateByUserRequestDto,
   UserUpdateRequestDto,
 } from './dto/user-update.request.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
 export type RequestWithUser = Request & { user: JwtUser };
 
+@ApiTags('Users')
+@ApiBearerAuth()
 @Controller('/v1/users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @ApiOperation({ summary: 'Lấy profile của user' })
+  @ApiOkResponse({ description: 'Lấy profile thành công' })
   @Get('/profile')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: minutes(1), limit: 60 } })
@@ -43,6 +56,9 @@ export class UserController {
 
     return ApiResponse.ok(user, 'Lấy thông tin người dùng thành công');
   }
+  @ApiOperation({ summary: 'Cập nhật profile của user' })
+  @ApiBody({ type: UserUpdateByUserRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật profile thành công' })
   @Patch('/profile')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
@@ -57,6 +73,13 @@ export class UserController {
     return ApiResponse.ok(updatedUser, 'Cập nhật thông tin thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách user (admin)' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'keyword', required: false })
+  @ApiQuery({ name: 'sortBy', required: false })
+  @ApiQuery({ name: 'sortOrder', required: false })
+  @ApiOkResponse({ description: 'Lấy danh sách user thành công' })
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
@@ -68,6 +91,9 @@ export class UserController {
     return ApiResponse.ok(result, 'Lấy danh sách user thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy user theo id (admin)' })
+  @ApiParam({ name: 'id', description: 'User id' })
+  @ApiOkResponse({ description: 'Lấy user thành công' })
   @Get('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
@@ -79,6 +105,10 @@ export class UserController {
     return ApiResponse.ok(user, 'Lấy thông tin người dùng thành công');
   }
 
+  @ApiOperation({ summary: 'Cập nhật user theo id (admin)' })
+  @ApiParam({ name: 'id', description: 'User id' })
+  @ApiBody({ type: UserUpdateRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật user thành công' })
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)

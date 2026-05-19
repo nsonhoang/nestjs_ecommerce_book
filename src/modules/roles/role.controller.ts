@@ -19,11 +19,23 @@ import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from './roles.enum';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Roles')
+@ApiBearerAuth()
 @Controller('/v1/roles')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
+  @ApiOperation({ summary: 'Lấy danh sách role (admin)' })
+  @ApiOkResponse({ description: 'Lấy danh sách role thành công' })
   @Get('')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -35,6 +47,9 @@ export class RoleController {
       .then((data) => ApiResponse.ok(data, 'Lấy danh sách role thành công'));
   }
 
+  @ApiOperation({ summary: 'Tạo role (admin)' })
+  @ApiBody({ type: RolesRequestDto })
+  @ApiOkResponse({ description: 'Tạo role thành công' })
   @Post('')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,6 +62,9 @@ export class RoleController {
     return ApiResponse.ok(result, 'Tạo role thành công');
   }
 
+  @ApiOperation({ summary: 'Xóa role (admin)' })
+  @ApiParam({ name: 'id', description: 'Role id' })
+  @ApiOkResponse({ description: 'Xóa role thành công' })
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)

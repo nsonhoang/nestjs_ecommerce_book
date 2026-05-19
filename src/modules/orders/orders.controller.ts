@@ -25,13 +25,27 @@ import { UpdateOrderStatusRequestDto } from './dto/update-order-status.request.d
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from '../roles/roles.enum';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
 export type RequestWithUser = Request & { user: JwtUser };
 
+@ApiTags('Orders')
+@ApiBearerAuth()
 @Controller('/v1/orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  @ApiOperation({ summary: 'Tạo đơn hàng' })
+  @ApiBody({ type: CreateOrderRequestDto })
+  @ApiOkResponse({ description: 'Tạo đơn hàng thành công' })
   @Post()
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
@@ -46,6 +60,13 @@ export class OrdersController {
   @Get() //lấy tất cả đơn hàng, cái này phải filter
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @ApiOperation({ summary: 'Lấy danh sách đơn hàng (admin/staff)' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'keyword', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'paymentMethod', required: false })
+  @ApiOkResponse({ description: 'Lấy danh sách đơn hàng thành công' })
   async getOrders(
     @Query() paginationQuery: PaginateOrderDto,
   ): Promise<ApiResponse<PaginatedResult<OrderResponseDto>>> {
@@ -55,6 +76,11 @@ export class OrdersController {
 
   @Get('/me')
   @UseGuards(JwtAuthGuard) // cái này cũng phải filter
+  @ApiOperation({ summary: 'Lấy danh sách đơn hàng của tôi' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiOkResponse({ description: 'Lấy danh sách đơn hàng thành công' })
   async getMyOrders(
     @Req() req: RequestWithUser,
     @Query() paginationQuery: PaginateOrderDto,
@@ -70,6 +96,9 @@ export class OrdersController {
   // chỉ được xem đơn hàng của mình thôi, admin mới dc xem tất cả
   @Get('/me/:id')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Lấy chi tiết đơn hàng của tôi' })
+  @ApiParam({ name: 'id', description: 'Order id' })
+  @ApiOkResponse({ description: 'Lấy chi tiết đơn hàng thành công' })
   async getOrderById(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: RequestWithUser,
@@ -84,6 +113,10 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
+  @ApiOperation({ summary: 'Cập nhật trạng thái đơn hàng (admin/staff)' })
+  @ApiParam({ name: 'id', description: 'Order id' })
+  @ApiBody({ type: UpdateOrderStatusRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật trạng thái đơn hàng thành công' })
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateOrderStatusRequestDto,

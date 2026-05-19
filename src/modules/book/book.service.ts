@@ -115,15 +115,6 @@ export class BookService {
     file: UploadFile,
   ): Promise<BookResponseDto> {
     try {
-      const uploadedImage = await this.mediaService.uploadFile(
-        ImagePosition.THUMBNAIL,
-        file,
-      );
-
-      const bookData = {
-        ...request,
-        thumbnail: uploadedImage.secure_url as string,
-      };
       if (request.categoryId !== undefined && request.categoryId.length > 0) {
         // 1. Lọc bỏ các ID trùng lặp (nếu có) để đếm cho chuẩn
         const uniqueCategoryIds = [...new Set(request.categoryId)];
@@ -150,6 +141,15 @@ export class BookService {
           );
         }
       }
+      const uploadedImage = await this.mediaService.uploadFile(
+        ImagePosition.THUMBNAIL,
+        file,
+      );
+
+      const bookData = {
+        ...request,
+        thumbnail: uploadedImage.secure_url as string,
+      };
 
       return this.bookRepository.createBook(bookData);
     } catch (error) {

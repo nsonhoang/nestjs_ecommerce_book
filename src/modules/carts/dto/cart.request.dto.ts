@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsArray,
@@ -18,6 +19,7 @@ export class CartItemRequestDto {
   // @IsNotEmpty()
   // @IsUUID()
   // cartId!: string;
+  @ApiProperty({ example: 'book-id' })
   @IsNotEmpty()
   bookId!: string;
 
@@ -28,6 +30,7 @@ export class CartItemRequestDto {
   @IsNotEmpty({ message: 'Vui lòng nhập số lượng' })
   @IsInt({ message: 'Số lượng bắt buộc phải là số nguyên' })
   @Min(1, { message: 'Số lượng thêm vào giỏ ít nhất phải là 1' })
+  @ApiProperty({ example: 1 })
   quantity!: number;
 }
 
@@ -41,5 +44,6 @@ export class DeleteCartItemRequestDto {
   @IsNotEmpty()
   @IsArray()
   @IsUUID('4', { each: true, message: 'Mỗi ID phải là một UUID hợp lệ' })
+  @ApiProperty({ example: ['cart-item-id'] })
   cartItemid!: string[];
 }

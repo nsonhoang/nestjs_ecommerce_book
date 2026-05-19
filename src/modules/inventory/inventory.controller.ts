@@ -25,15 +25,28 @@ import { AuthRole } from '../roles/roles.enum';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { type RequestWithUser } from '../users/user.controller';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
 // flow như thế này: khi thêm sách xong nhấn vào sách để xem đã có  kho chứa chưa nếu có thì tạo có thể tạo thêm kho,
 // rồi vào kho đấu xể nhập xuất kho
 
+@ApiTags('Inventory')
+@ApiBearerAuth()
 @Controller('/v1/inventory')
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   // nguyên cái này chỉ cho admin xem
+  @ApiOperation({ summary: 'Tạo inventory (admin/staff)' })
+  @ApiBody({ type: InventoryRequestDto })
+  @ApiOkResponse({ description: 'Tạo inventory thành công' })
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -49,6 +62,9 @@ export class InventoryController {
   }
 
   //hàm xuất nhập kho , chỉ admin với staff mới đc phép thao tác
+  @ApiOperation({ summary: 'Tạo inventory log (admin/staff)' })
+  @ApiBody({ type: InventoryLogRequestDto })
+  @ApiOkResponse({ description: 'Tạo inventory log thành công' })
   @Post('/logs')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -67,6 +83,8 @@ export class InventoryController {
     );
   }
 
+  @ApiOperation({ summary: 'Lấy danh sách inventory (admin/staff)' })
+  @ApiOkResponse({ description: 'Lấy danh sách inventory thành công' })
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -78,6 +96,9 @@ export class InventoryController {
     );
   }
 
+  @ApiOperation({ summary: 'Lấy inventory theo id (admin/staff)' })
+  @ApiParam({ name: 'id', description: 'Inventory id' })
+  @ApiOkResponse({ description: 'Lấy inventory thành công' })
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -111,6 +132,9 @@ export class InventoryController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
+  @ApiOperation({ summary: 'Xóa inventory (admin/staff)' })
+  @ApiParam({ name: 'id', description: 'Inventory id' })
+  @ApiOkResponse({ description: 'Xóa inventory thành công' })
   async remove(@Param('id') id: string) {
     await this.inventoryService.remove(id);
     return ApiResponse.message('Xóa thành công');

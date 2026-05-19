@@ -19,23 +19,41 @@ import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { AuthRole } from '../roles/roles.enum';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Authors')
 @Controller('/v1/authors')
 export class AuthorController {
   constructor(private readonly authorService: AuthorService) {}
 
+  @ApiOperation({ summary: 'Lấy danh sách tác giả' })
+  @ApiOkResponse({ description: 'Lấy danh sách tác giả thành công' })
   @Get('')
   async getAuthors() {
     const authors = await this.authorService.getAuthors();
     return ApiResponse.ok(authors, 'Lấy danh sách tác giả thành công');
   }
 
+  @ApiOperation({ summary: 'Lấy tác giả theo id' })
+  @ApiParam({ name: 'id', description: 'Author id' })
+  @ApiOkResponse({ description: 'Lấy tác giả thành công' })
   @Get(':id')
   async getAuthorById(@Param('id') id: string) {
     const author = await this.authorService.getAuthorById(id);
     return ApiResponse.ok(author, 'Lấy thông tin tác giả thành công');
   }
 
+  @ApiOperation({ summary: 'Tạo tác giả (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiBody({ type: AuthorRequestDto })
+  @ApiOkResponse({ description: 'Tạo tác giả thành công' })
   @Post('')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -47,6 +65,10 @@ export class AuthorController {
     return ApiResponse.ok(author, 'Tạo tác giả thành công');
   }
 
+  @ApiOperation({ summary: 'Xóa tác giả (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Author id' })
+  @ApiOkResponse({ description: 'Xóa tác giả thành công' })
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
@@ -56,6 +78,11 @@ export class AuthorController {
     return ApiResponse.message('Xóa tác giả thành công');
   }
 
+  @ApiOperation({ summary: 'Cập nhật tác giả (admin/staff)' })
+  @ApiBearerAuth()
+  @ApiParam({ name: 'id', description: 'Author id' })
+  @ApiBody({ type: AuthorUpdateRequestDto })
+  @ApiOkResponse({ description: 'Cập nhật tác giả thành công' })
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)

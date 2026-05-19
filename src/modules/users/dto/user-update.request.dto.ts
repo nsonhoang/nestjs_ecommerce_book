@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OmitType } from '@nestjs/mapped-types';
 import {
   IsNotEmpty,
@@ -9,6 +10,7 @@ import {
 } from 'class-validator';
 
 export class UserUpdateRequestDto {
+  @ApiPropertyOptional({ example: 'Nguyen Van B' })
   @IsOptional()
   @IsString()
   @MinLength(2)
@@ -16,6 +18,7 @@ export class UserUpdateRequestDto {
   @IsNotEmpty({ message: 'Tên không được để trống' })
   name!: string;
 
+  @ApiPropertyOptional({ example: '0987654321' })
   @IsOptional()
   @IsString()
   @Matches(/^[0-9]{9,11}$/, {
@@ -23,6 +26,7 @@ export class UserUpdateRequestDto {
   })
   phone?: string;
 
+  @ApiPropertyOptional({ example: 'role-id' })
   @IsOptional()
   @IsString()
   roleId?: string; //cái này phải sử dụng enum để validate, nhưng tạm thời để string trước, sau này sẽ refactor lại sau khi có enum Role trong database và codebase
