@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 import { InventoryService } from './inventory.service';
 
 import {
@@ -36,6 +37,7 @@ export class InventoryController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async create(
     @Body() createInventoryDto: InventoryRequestDto,
   ): Promise<ApiResponse<InventoryResponseDto>> {
@@ -50,6 +52,7 @@ export class InventoryController {
   @Post('/logs')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createInventoryLog(
     @Body() inventoryLogDto: InventoryLogRequestDto,
     @Req() req: RequestWithUser,
@@ -107,6 +110,7 @@ export class InventoryController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async remove(@Param('id') id: string) {
     await this.inventoryService.remove(id);
     return ApiResponse.message('Xóa thành công');

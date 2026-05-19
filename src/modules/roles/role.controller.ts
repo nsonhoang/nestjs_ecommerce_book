@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { RolesRequestDto } from '../roles/dto/roles.dto.request';
 import { RolesResponseDto } from '../roles/dto/roles.response.dto';
@@ -27,6 +28,7 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 60 } })
   getRoles(): Promise<ApiResponse<RolesResponseDto[]>> {
     return this.roleService
       .getRoles()
@@ -37,6 +39,7 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createRole(
     @Body() data: RolesRequestDto,
   ): Promise<ApiResponse<RolesResponseDto>> {
@@ -48,6 +51,7 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteRole(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     await this.roleService.deleteRoleById(id);
     return ApiResponse.message('Xóa role thành công ');

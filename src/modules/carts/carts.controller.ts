@@ -10,6 +10,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 import { CartsService } from './carts.service';
 
 import {
@@ -29,6 +30,7 @@ export class CartsController {
   //Phương thức này sẽ thêm cartItem luôn
   @Post('/items')
   @UseGuards(JwtAuthGuard) // Bảo vệ endpoint này bằng JWT Auth Guard
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async addItemToCart(
     @Body() cartItemDto: CartItemRequestDto,
     @Req() req: RequestWithUser,
@@ -50,6 +52,7 @@ export class CartsController {
   // itemId - bookID là unique
   @Patch('items/:id')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateItem(
     @Param('id', ParseUUIDPipe) itemId: string, // này để lấy id của item cần cập nhật
     @Req() req: RequestWithUser, // này để lấy userId từ token kiểm tra xem có phải chủ sở hữu của item này không
@@ -66,6 +69,7 @@ export class CartsController {
   // xóa item trong cart
   @Delete('items/:id')
   @UseGuards(JwtAuthGuard) // phải là chính chủ mới xóa đc
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async removeItem(
     @Param('id', ParseUUIDPipe) idItem: string,
     @Req() req: RequestWithUser,
@@ -76,6 +80,7 @@ export class CartsController {
   }
   @Delete('items')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteMany(
     @Req() req: RequestWithUser,
     @Body() body: DeleteCartItemRequestDto,

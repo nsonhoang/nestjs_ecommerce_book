@@ -8,6 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { CategoryService } from './category.service';
@@ -25,6 +26,7 @@ export class CategoryController {
   @Post('')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createCategory(
     @Body() categoryDto: CategoryRequestDto,
   ): Promise<ApiResponse<CategoryResponseDto>> {
@@ -37,6 +39,7 @@ export class CategoryController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateCategory(
     @Param('id') id: string,
     @Body() categoryDto: CategoryRequestDto,
@@ -68,6 +71,7 @@ export class CategoryController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteCategory(@Param('id') id: string): Promise<ApiResponse<void>> {
     const result = await this.categoryService.deleteCategory(id);
     return ApiResponse.ok(result, 'Xóa danh mục thành công');

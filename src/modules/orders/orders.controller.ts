@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { type Request } from 'express';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
@@ -33,6 +34,7 @@ export class OrdersController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createOrder(
     @Body() request: CreateOrderRequestDto,
     @Req() req: RequestWithUser,
@@ -81,6 +83,7 @@ export class OrdersController {
   @Patch('/:id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateOrderStatusRequestDto,

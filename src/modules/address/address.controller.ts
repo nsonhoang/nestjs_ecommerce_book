@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 import { AddressService } from './address.service';
 
 import { UpdateAddressDto } from './dto/update-address.request.dto';
@@ -26,6 +27,7 @@ export class AddressController {
   //phair ccos bearer token mới được tạo địa chỉ, cập nhật địa chỉ, xóa địa chỉ
   @Post()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async create(
     @Body() createAddressDto: AddressRequestDTO,
     @Req() req: RequestWithUser,
@@ -60,6 +62,7 @@ export class AddressController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async update(
     @Param('id') id: string,
     @Body() updateAddressDto: UpdateAddressDto,
@@ -75,6 +78,7 @@ export class AddressController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async remove(
     @Param('id') id: string,
     @Req() req: RequestWithUser,

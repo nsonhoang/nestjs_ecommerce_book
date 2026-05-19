@@ -12,6 +12,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { ImageBookService } from './image-book.service';
@@ -51,6 +52,7 @@ export class ImageBookController {
       // }
     ),
   )
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createImageForBook(
     @UploadedFiles(
       new ParseFilePipe({
@@ -77,6 +79,7 @@ export class ImageBookController {
   @Delete()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteImageByPublicId(@Body('publicId') publicId: string[]) {
     await this.imageBookService.deleteImageByPublicId(publicId);
     return ApiResponse.message('Xóa ảnh sách thành công');
@@ -85,6 +88,7 @@ export class ImageBookController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteImageById(@Param('id') id: string) {
     await this.imageBookService.deleteImageById(id);
     return ApiResponse.message('Xóa ảnh sách thành công');

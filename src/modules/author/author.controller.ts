@@ -8,6 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { AuthorService } from './author.service';
@@ -38,6 +39,7 @@ export class AuthorController {
   @Post('')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createAuthor(
     @Body() authorDto: AuthorRequestDto,
   ): Promise<ApiResponse<AuthorResponseDto>> {
@@ -48,6 +50,7 @@ export class AuthorController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteAuthor(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     await this.authorService.deleteAuthor(id);
     return ApiResponse.message('Xóa tác giả thành công');
@@ -56,6 +59,7 @@ export class AuthorController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateAuthor(
     @Param('id') id: string,
     @Body() authorDto: AuthorUpdateRequestDto,

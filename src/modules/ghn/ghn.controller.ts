@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { type Request } from 'express';
 import { ApiResponse } from 'src/common/api-response';
@@ -57,6 +58,7 @@ export class GhnController {
 
   @Post('calculate-shipping')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async calculateShipping(
     @Body() body: GhnCalculateShippingRequestDto,
   ): Promise<ApiResponse<{ shippingFee: number }>> {

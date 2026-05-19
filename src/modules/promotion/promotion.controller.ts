@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 import { PromotionService } from './promotion.service';
 
 import { PromotionRequestDto } from './dto/promotion.request.dto';
@@ -31,6 +32,7 @@ export class PromotionController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createPromotion(
     @Body() promotionData: PromotionRequestDto,
   ): Promise<ApiResponse<PromotionResponseDto>> {
@@ -47,6 +49,7 @@ export class PromotionController {
   @Post('/:id/notify')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async notifyUsersAboutPromotion(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() notificationData: PromotionNotifyRequestDto,
@@ -84,6 +87,7 @@ export class PromotionController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updatePromotion(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() promotionData: PromotionUpdateRequestDto,
@@ -114,6 +118,7 @@ export class PromotionController {
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deletePromotion(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ApiResponse<unknown>> {

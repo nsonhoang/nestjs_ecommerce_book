@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { BookService } from './book.service';
@@ -50,6 +51,7 @@ export class BookController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
   @UseInterceptors(FileInterceptor('file'))
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createBook(
     @UploadedFile(
       new ParseFilePipe({
@@ -69,6 +71,7 @@ export class BookController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateBook(
     @Param('id') id: string,
     @Body() bookDto: BookUpdateRequestDto,
@@ -80,6 +83,7 @@ export class BookController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteBook(@Param('id') id: string) {
     await this.bookService.deleteBook(id);
     return ApiResponse.message('Xóa sách thành công');

@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -31,6 +32,7 @@ export class VouchersController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createVoucher(
     @Body() data: VouchersRequestDto,
   ): Promise<ApiResponse<VouchersResponseDto>> {
@@ -57,6 +59,7 @@ export class VouchersController {
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateVoucher(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() data: VouchersUpdateRequestDto,
@@ -68,6 +71,7 @@ export class VouchersController {
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteVoucher(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ApiResponse<unknown>> {

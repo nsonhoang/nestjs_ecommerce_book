@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { minutes, Throttle } from '@nestjs/throttler';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { type RequestWithUser } from '../users/user.controller';
@@ -18,6 +19,7 @@ export class NotificationsController {
   @Post('send')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async sendNotificationToManyUsers(@Body() body: NotificationUsersRequestDto) {
     await this.notificationsService.sendNotificationToUsers(
       body.userIds,
@@ -31,6 +33,7 @@ export class NotificationsController {
 
   //cái này để test
   @Post('test-send')
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async testSendNotification(
     @Req() req: RequestWithUser,
     @Body() body: { title: string; body: string },
@@ -49,6 +52,7 @@ export class NotificationsController {
 
   // cái này để test thôi
   @Post('token')
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async registerToken(
     @Req() req: RequestWithUser,
     @Body() body: { token: string; deviceOs?: string },

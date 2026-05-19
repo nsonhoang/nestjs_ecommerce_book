@@ -445,8 +445,8 @@ describe('AuthService (unit)', () => {
       email: 'test@example.com',
       name: 'Test User',
       phone: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: expect.any(Date),
+      updatedAt: expect.any(Date),
       role: { name: 'USER' },
     });
 

@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { type Request } from 'express';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 import { UserService } from './user.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
@@ -34,6 +35,7 @@ export class UserController {
 
   @Get('/profile')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 60 } })
   async getProfile(
     @Req() req: RequestWithUser,
   ): Promise<ApiResponse<UserResponseDto>> {
@@ -43,6 +45,7 @@ export class UserController {
   }
   @Patch('/profile')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateUserByUser(
     @Req() req: RequestWithUser,
     @Body() data: UserUpdateByUserRequestDto,
@@ -57,6 +60,7 @@ export class UserController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 30 } })
   async getAllUsers(
     @Query() query: UserQueryDto,
   ): Promise<ApiResponse<PaginatedResult<UserResponseDto>>> {
@@ -67,6 +71,7 @@ export class UserController {
   @Get('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 60 } })
   async getUserById(
     @Param('id') id: string,
   ): Promise<ApiResponse<UserResponseDto>> {
@@ -77,6 +82,7 @@ export class UserController {
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateUserByAdmin(
     @Param('id') id: string,
     @Body() request: UserUpdateRequestDto,
