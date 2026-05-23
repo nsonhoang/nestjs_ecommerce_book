@@ -54,5 +54,6 @@ export class BookUpdateRequestDto extends PartialType(BookRequestDto) {
   @ApiProperty({ enum: BookStatus, example: BookStatus.ACTIVE })
   @IsNotEmpty({ message: 'Loại biến động không được để trống' })
   @IsEnum(BookStatus, { message: 'Trạng thái không hợp lệ' })
-  status!: BookStatus;
+  @IsOptional()
+  status?: BookStatus;
 }

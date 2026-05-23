@@ -268,6 +268,7 @@ export class BookRepository {
       description: data.description,
       price: data.price,
       thumbnail: data.thumbnail,
+      status: data.status,
     };
 
     // 2. CHỈ cập nhật Danh mục NẾU Frontend thực sự có gửi trường này

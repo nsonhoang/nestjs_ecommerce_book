@@ -137,12 +137,32 @@ export class BookController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseInterceptors(FileInterceptor('file'))
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
   async updateBook(
     @Param('id') id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file: any,
     @Body() bookDto: BookUpdateRequestDto,
   ): Promise<ApiResponse<BookResponseDto>> {
-    const book = await this.bookService.updateBook(id, bookDto);
+    const book = await this.bookService.updateBook(id, bookDto, file);
     return ApiResponse.ok(book, 'Cập nhật sách thành công');
   }
 

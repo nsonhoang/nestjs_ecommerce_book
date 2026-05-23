@@ -194,6 +194,7 @@ export class BookService {
       const publicIdThumbnail = this.getPublicIdsFromUrl(book.thumbnail);
       if (publicIdThumbnail) {
         await this.mediaService.deleteFile(publicIdThumbnail);
+        console.log('Đã dọn rác thành công');
       }
 
       await this.bookRepository.deleteBook(id);
@@ -211,6 +212,7 @@ export class BookService {
   async updateBook(
     id: string,
     request: BookUpdateRequestDto,
+    file? : UploadFile,
   ): Promise<BookResponseDto> {
     try {
       // 1. VALIDATE DANH MỤC VÀ TÁC GIẢ
@@ -241,7 +243,7 @@ export class BookService {
       // 2. XỬ LÝ HÌNH ẢNH MỚI (Lưu tạm ID ảnh cũ để dọn rác sau)
       let oldThumbnailPublicId: string | null = null;
 
-      if (request.thumbnail) {
+      if (file) {
         // Lấy sách cũ ra để chuẩn bị ID xóa
         const existingBook = await this.getBookById(id);
         if (existingBook.thumbnail) {
@@ -253,7 +255,7 @@ export class BookService {
         // Upload ảnh MỚI lên
         const uploadedImage = await this.mediaService.uploadFile(
           ImagePosition.THUMBNAIL,
-          request.thumbnail as unknown as UploadFile,
+          file,
         );
         // Gán link mới vào request để chuẩn bị lưu DB
         request.thumbnail = uploadedImage.secure_url as string;
@@ -271,6 +273,7 @@ export class BookService {
             err,
           );
         });
+        console.log('Đã dọn rác thành công'); 
       }
 
       return updatedBook;
