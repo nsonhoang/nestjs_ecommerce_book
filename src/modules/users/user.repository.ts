@@ -35,6 +35,7 @@ export class UserRepository {
         email: true,
         name: true,
         phone: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
         role: { select: { id: true, name: true } },
@@ -69,6 +70,7 @@ export class UserRepository {
           email: true,
           name: true,
           phone: true,
+          status: true,
           createdAt: true,
           updatedAt: true,
           role: { select: { id: true, name: true } },
@@ -101,6 +103,7 @@ export class UserRepository {
         password: true, // thằng này cần để so sánh mật khẩu, nhưng sẽ không trả về cho client
         name: true,
         phone: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
         role: {
@@ -120,6 +123,7 @@ export class UserRepository {
         email: true,
         name: true,
         phone: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
         role: {

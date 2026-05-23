@@ -21,6 +21,7 @@ model User {
   password  String
   name      String
   phone     String?
+  status    UserStatus @default(ACTIVE)
   cart      Cart?
   orders    Order[]
   reviews   Review[]
@@ -41,6 +42,11 @@ model Role {
   name String @unique
 
   users User[]
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model Category {

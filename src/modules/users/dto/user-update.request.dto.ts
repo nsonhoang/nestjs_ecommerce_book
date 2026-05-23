@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OmitType } from '@nestjs/mapped-types';
 import {
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -8,6 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { UserStatus } from 'generated/prisma/enums';
 
 export class UserUpdateRequestDto {
   @ApiPropertyOptional({ example: 'Nguyen Van B' })
@@ -30,8 +32,14 @@ export class UserUpdateRequestDto {
   @IsOptional()
   @IsString()
   roleId?: string; //cái này phải sử dụng enum để validate, nhưng tạm thời để string trước, sau này sẽ refactor lại sau khi có enum Role trong database và codebase
+
+  @ApiPropertyOptional({ enum: UserStatus, example: UserStatus.ACTIVE })
+  @IsOptional()
+  @IsEnum(UserStatus, { message: 'Trạng thái không hợp lệ' })
+  status?: UserStatus;
 }
 
 export class UserUpdateByUserRequestDto extends OmitType(UserUpdateRequestDto, [
   'roleId',
+  'status',
 ] as const) {}

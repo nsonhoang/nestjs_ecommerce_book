@@ -71,6 +71,7 @@ export class AuthService {
   ): Promise<AuthResponse> {
     try {
       const user = await this.validate(authRequest);
+      this.checkStatus(user); // kiểm tra trạng thái user nếu lỗi thì ném ra lỗi
       const csrfToken = this.generateCsrfToken();
       const deviceId = this.getDeviceId(req);
       // sử dụng cái pipeline để thực hiện nhiều lệnh Redis trong một lần gọi,
@@ -659,6 +660,11 @@ export class AuthService {
       throw new UnauthorizedException('Mật khẩu không đúng');
     }
     return user;
+  }
+  private checkStatus(user: User) {
+    if (user.status === 'INACTIVE') {
+      throw new ForbiddenException('Tài khoản của bạn đã bị vô hiệu hóa');
+    }
   }
 
   private async matchPassword(

@@ -150,16 +150,28 @@ Endpoint webhook GHN yêu cầu header:
 
 ### 4.3) Users
 
+#### User model (summary)
+
+- `id` (string, uuid)
+- `email` (string, unique)
+- `name` (string)
+- `phone` (string | null)
+- `status` (enum: `ACTIVE | INACTIVE`, default=`ACTIVE`) — user trạng thái, dùng để bật/tắt tài khoản
+- `roleId` (string)
+
 #### UserUpdateByUserRequestDto
 
 - `name` (Optional, string, minLen=2, maxLen=100, not empty)
 - `phone` (Optional, string, regex: `^[0-9]{9,11}$`)
+
+> Note: `UserUpdateByUserRequestDto` explicitly excludes `roleId` and `status` — regular users cannot change their role or status.
 
 #### UserUpdateRequestDto (admin)
 
 - `name` (Optional, string, minLen=2, maxLen=100, not empty)
 - `phone` (Optional, string, regex: `^[0-9]{9,11}$`)
 - `roleId` (Optional, string)
+- `status` (Optional, enum: `ACTIVE|INACTIVE`) — Admin only. When provided, updates the user's `status` field in the database.
 
 #### UserQueryDto
 

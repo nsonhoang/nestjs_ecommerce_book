@@ -1,4 +1,5 @@
 import { RolesResponseDto } from '../roles/dto/roles.response.dto';
+import { UserStatus } from 'generated/prisma/enums';
 
 export interface User {
   id: string;
@@ -7,6 +8,7 @@ export interface User {
   name: string;
   role: RolesResponseDto;
   phone?: string;
+  status: UserStatus;
   createdAt: Date;
   updatedAt: Date;
 }

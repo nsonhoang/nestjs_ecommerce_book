@@ -100,7 +100,17 @@ export class UserService {
       //   updateData.roleId = roleId; // gán lại roleId vào updateData để update vào database
       // }
 
-      const updatedUser = await this.userRepository.updateUser(id, updateData);
+      const updatePayload: Partial<UserUpdateRequestDto> = {
+        name: updateData.name,
+        phone: updateData.phone,
+        roleId: updateData.roleId,
+        status: updateData.status,
+      };
+
+      const updatedUser = await this.userRepository.updateUser(
+        id,
+        updatePayload,
+      );
       return updatedUser;
     } catch (error) {
       this.logger.error(`Failed to update user with id ${id}`, error);
