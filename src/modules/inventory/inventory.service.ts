@@ -18,6 +18,8 @@ import {
   InventoryLogResponseDto,
   InventoryResponseDto,
 } from './dto/inventory.response.dto';
+import PaginateInventoryLogsDto from './dto/paginate-inventory-logs.dto';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { InventoryLogType } from 'generated/prisma/enums';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
 import { Prisma } from 'generated/prisma/client';
@@ -26,6 +28,25 @@ import { Prisma } from 'generated/prisma/client';
 export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
   constructor(private readonly inventoryRepository: InventoryRepository) {}
+
+  async getAllLog(
+    query: PaginateInventoryLogsDto,
+  ): Promise<PaginatedResult<InventoryLogResponseDto>> {
+    try {
+      const { page = 1, limit = 10, inventoryId, type, from, to } = query;
+      return await this.inventoryRepository.getAllLog(
+        Number(page),
+        Number(limit),
+        inventoryId,
+        type as any,
+        from,
+        to,
+      );
+    } catch (error) {
+      this.logger.error('Lỗi khi lấy log kho', error);
+      throw new InternalServerErrorException('Lỗi khi lấy log kho');
+    }
+  }
 
   async decrementStockByTx(
     tx: Prisma.TransactionClient,

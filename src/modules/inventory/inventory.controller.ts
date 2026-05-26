@@ -7,6 +7,7 @@ import {
   Delete,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { minutes, Throttle } from '@nestjs/throttler';
 import { InventoryService } from './inventory.service';
@@ -20,6 +21,8 @@ import {
   InventoryLogResponseDto,
   InventoryResponseDto,
 } from './dto/inventory.response.dto';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import PaginateInventoryLogsDto from './dto/paginate-inventory-logs.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { AuthRole } from '../roles/roles.enum';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -94,6 +97,19 @@ export class InventoryController {
       inventory,
       'Inventories retrieved successfully',
     );
+  }
+
+  // lấy hết thông tin log
+  @ApiOperation({ summary: 'Lấy danh sách inventory log' })
+  @ApiOkResponse({ description: 'Lấy danh sách inventory log thành công' })
+  @Get('/logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  async findAllLogs(
+    @Query() query: PaginateInventoryLogsDto,
+  ): Promise<ApiResponse<PaginatedResult<InventoryLogResponseDto>>> {
+    const logs = await this.inventoryService.getAllLog(query);
+    return ApiResponse.ok(logs, 'LẤy danh sách inventory log thành công');
   }
 
   @ApiOperation({ summary: 'Lấy inventory theo id (admin/staff)' })

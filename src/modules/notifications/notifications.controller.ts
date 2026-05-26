@@ -84,7 +84,9 @@ export class NotificationsController {
       },
     },
   })
-  @ApiOkResponse({ description: 'Đăng ký token thành công' })
+
+  //cái này cũng để test thôi
+  @ApiOkResponse({ description: 'Đăng ký gửi thông báo thành công' })
   @Post('token')
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async registerToken(

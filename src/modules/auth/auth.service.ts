@@ -158,6 +158,10 @@ export class AuthService {
           authRequest.fcmToken,
           authRequest.deviceOs,
         );
+        await this.notificationsService.subscribeTokenToTopic(
+          authRequest.fcmToken,
+          'sales',
+        );
       }
 
       return {

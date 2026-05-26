@@ -60,7 +60,9 @@ export class ImageBookService {
 
   async deleteImageById(imageId: string): Promise<void> {
     try {
-      const image = await this.imageBookRepository.getImageById(imageId);
+      const normalizedImageId = imageId.trim().toLowerCase();
+      const image =
+        await this.imageBookRepository.getImageById(normalizedImageId);
       if (!image) {
         throw new BadRequestException('Không tìm thấy ảnh');
       }
@@ -77,8 +79,10 @@ export class ImageBookService {
     file: UploadFile[],
   ): Promise<BookImageResponseDto[]> {
     try {
+      const normalizedBookId = request.bookId.trim().toLowerCase();
+
       const book = await this.prisma.book.findUnique({
-        where: { id: request.bookId },
+        where: { id: normalizedBookId },
         include: { images: true },
       });
       if (!book) {
@@ -90,7 +94,7 @@ export class ImageBookService {
         file,
       )) as Array<{ secure_url: string; public_id: string }>;
       const dataRequest = {
-        bookId: request.bookId,
+        bookId: normalizedBookId,
         images: uploadedImages.map((image) => ({
           url: image.secure_url,
           publicId: image.public_id,

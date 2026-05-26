@@ -913,6 +913,21 @@ Kế thừa `PaginationQueryDto`:
 - Body: `InventoryLogRequestDto`
 - Response: `ApiResponse<InventoryLogResponseDto>`
 
+#### `GET /v1/inventory/logs`
+
+- Auth: Bearer JWT + Role `ADMIN|STAFF`
+- Query:
+  - `page` (Optional, int, default=1)
+  - `limit` (Optional, int, default=10, max=100)
+  - `inventoryId` (Optional, string, uuid) — lọc log cho kho cụ thể
+  - `type` (Optional, enum: `IN|OUT|ADJUST`) — lọc theo loại log
+  - `from` (Optional, string, ISO date) — lọc các log tạo từ ngày này (inclusive)
+  - `to` (Optional, string, ISO date) — lọc các log tạo đến ngày này (inclusive)
+- Response: `ApiResponse<PaginatedResult<InventoryLogResponseDto>>`
+- Description: Trả về danh sách log theo trang, sắp xếp theo `createdAt desc`.
+
+Example: `GET /v1/inventory/logs?page=2&limit=20&inventoryId=...&type=IN&from=2026-05-01T00:00:00.000Z&to=2026-05-26T23:59:59.999Z`
+
 #### `GET /v1/inventory`
 
 - Auth: Bearer JWT + Role `ADMIN|STAFF`

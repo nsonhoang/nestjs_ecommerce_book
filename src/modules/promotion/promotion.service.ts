@@ -77,7 +77,8 @@ export class PromotionService {
     return this.promotionRepository.findAll(query);
   }
 
-  async getPromotionById(id: string): Promise<PromotionResponseDto | null> {
+  async getPromotionById(id: string): Promise<PromotionResponseDto> {
+    console.log('PromotionService.getPromotionById called with id:', id);
     const promotion = await this.promotionRepository.findById(id);
     if (!promotion) {
       throw new NotFoundException(

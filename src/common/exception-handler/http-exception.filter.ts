@@ -31,8 +31,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
         // Với ValidationPipe, message thường là mảng string
         if (Array.isArray(responseObj.message)) {
-          // lấy message đầu tiên: "Tên role không được để trống"
-          message = 'Lỗi';
+          message = responseObj.message.join(', ');
           errors = responseObj.message;
         } else if (typeof responseObj.message === 'string') {
           message = responseObj.message;

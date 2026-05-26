@@ -78,6 +78,7 @@ describe('AuthService (unit)', () => {
     userService = { getUserByEmail: jest.fn(), createUser: jest.fn() };
     notificationsService = {
       saveDeviceToken: jest.fn(),
+      subscribeTokenToTopic: jest.fn(),
       removeDeviceToken: jest.fn().mockImplementation(() => Promise.resolve()),
     };
     roleRepository = { findByName: jest.fn() };
@@ -214,6 +215,10 @@ describe('AuthService (unit)', () => {
       'user-1',
       'fcm-token',
       'android',
+    );
+    expect(notificationsService.subscribeTokenToTopic).toHaveBeenCalledWith(
+      'fcm-token',
+      'sales',
     );
 
     // Response

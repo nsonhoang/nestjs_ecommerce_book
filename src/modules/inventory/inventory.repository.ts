@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { getPagination, buildMeta } from 'src/utils/pagination.util';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   InventoryLogCommand,
@@ -9,11 +11,72 @@ import {
   InventoryLogResponseDto,
   InventoryResponseDto,
 } from './dto/inventory.response.dto';
-import { Prisma } from 'generated/prisma/client';
+import { InventoryLogType, Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class InventoryRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getAllLog(
+    page = 1,
+    limit = 10,
+    inventoryId?: string,
+    type?: InventoryLogType,
+    from?: string,
+    to?: string,
+  ): Promise<PaginatedResult<InventoryLogResponseDto>> {
+    const {
+      page: safePage,
+      limit: safeLimit,
+      skip,
+      take,
+    } = getPagination(page, limit);
+
+    const andConditions: Prisma.InventoryLogWhereInput[] = [];
+
+    if (inventoryId) {
+      andConditions.push({ inventoryId });
+    }
+
+    if (type) {
+      andConditions.push({ type });
+    }
+
+    if (from || to) {
+      const dateFilter: Prisma.DateTimeFilter = {};
+      if (from) dateFilter.gte = new Date(from);
+      if (to) dateFilter.lte = new Date(to);
+      andConditions.push({ createdAt: dateFilter });
+    }
+
+    const where: Prisma.InventoryLogWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {};
+
+    const [data, total] = await Promise.all([
+      this.prisma.inventoryLog.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          inventoryId: true,
+          change: true,
+          beforeQty: true,
+          afterQty: true,
+          reason: true,
+          type: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.inventoryLog.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: buildMeta(safePage, safeLimit, total),
+    };
+  }
 
   async decrementStockByTx(
     tx: Prisma.TransactionClient,
@@ -75,6 +138,8 @@ export class InventoryRepository {
         createdAt: true,
         updatedAt: true,
         logs: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
           select: {
             id: true,
             inventoryId: true,

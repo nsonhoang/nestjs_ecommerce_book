@@ -104,6 +104,19 @@ export class NotificationsService {
     }
   }
 
+  async subscribeTokenToTopic(token: string, topic: string) {
+    try {
+      const response = await admin.messaging().subscribeToTopic([token], topic);
+      this.logger.log(
+        `Đăng ký token vào topic ${topic} thành công: ${response.successCount}`,
+      );
+      return response;
+    } catch (error) {
+      this.logger.error(`Lỗi đăng ký token vào topic ${topic}`, error);
+      throw error;
+    }
+  }
+
   async saveDeviceToken(userId: string, FCMtoken: string, deviceOs: string) {
     try {
       return await this.notificationsRepository.saveDeviceToken(

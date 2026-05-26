@@ -7,9 +7,11 @@ import {
   IsOptional,
   Min,
   ArrayNotEmpty,
+  IsEnum,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { parseStringArray } from 'src/utils/pasrseStringArray';
+import { BookStatus } from 'generated/prisma/enums';
 
 export class BookRequestDto {
   @ApiProperty({ example: 'Clean Architecture' })
@@ -53,6 +55,11 @@ export class BookRequestDto {
   @ApiProperty({ example: ['category-id'] })
   categoryId!: string[];
 
+  @ApiPropertyOptional({ enum: BookStatus, example: BookStatus.DRAFT })
+  @IsEnum(BookStatus, { message: 'Trạng thái không hợp lệ' })
+  @IsOptional()
+  status?: BookStatus;
+
   @Transform(({ value }: { value: unknown }) => parseStringArray(value))
   @IsArray({ message: 'authorId phải là một mảng' })
   @ArrayNotEmpty({ message: 'Sách phải có ít nhất một tác giả' })
@@ -73,4 +80,5 @@ export class CreateBookWithThumbNail {
   categoryId!: string[];
 
   authorId!: string[];
+  status?: BookStatus;
 }
