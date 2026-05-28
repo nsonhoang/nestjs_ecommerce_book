@@ -264,7 +264,7 @@ Kế thừa `PaginationQueryDto` + filter:
 - `paymentMethod` (Optional, enum `OrderPaymentMethod`)
 - `minAmount` (Optional, number, min=0)
 - `maxAmount` (Optional, number, min=0)
-- `status` (Optional, enum `OrderStatus`)
+- `status` (Optional, enum `OrderStatus`: `PENDING | PROCESSING | SHIPPED | DELIVERED | CANCELLED | RETURNING | RETURNED | REFUNDED`)
 - `code` (Optional, string)
 - `shippingPhone` (Optional, string)
 - `shippingAddress` (Optional, string)
@@ -272,9 +272,14 @@ Kế thừa `PaginationQueryDto` + filter:
 - `shippingDistrict` (Optional, string)
 - `shippingCity` (Optional, string)
 
+#### OrderResponseDto (extra fields)
+
+- `status` (enum `OrderStatus`) — có thêm `RETURNED` để biểu diễn đơn đã được xác nhận trả hàng hoàn tất
+- `returnRequestedAt` (Optional, Date | null) — thời điểm user yêu cầu trả hàng, dùng làm mốc tính hạn 7 ngày
+
 #### UpdateOrderStatusRequestDto
 
-- `status` (Required, enum `OrderStatus`)
+- `status` (Required, enum `OrderStatus`: `PENDING | PROCESSING | SHIPPED | DELIVERED | CANCELLED | RETURNING | RETURNED | REFUNDED`)
 
 ### 4.9) Vouchers
 
@@ -716,7 +721,33 @@ Kế thừa `PaginationQueryDto`:
 
 - Auth: Bearer JWT + Role `ADMIN|STAFF`
 - Body: `UpdateOrderStatusRequestDto`
+  - `status` (Required, enum `OrderStatus`: `PENDING | PROCESSING | SHIPPED | DELIVERED | CANCELLED | RETURNING | RETURNED | REFUNDED`)
 - Response: `ApiResponse<OrderResponseDto>`
+
+#### `PATCH /v1/orders/:id/cancel` (admin/staff)
+
+- Auth: Bearer JWT + Role `ADMIN|STAFF`
+- Path params: `id` (Required, uuid)
+- Response: `ApiResponse<OrderResponseDto>`
+- Note: hiện tại chỉ hủy được khi đơn ở trạng thái `PENDING`
+
+#### `PATCH /v1/orders/me/:id/cancel`
+
+- Auth: Bearer JWT
+- Path params: `id` (Required, uuid)
+- Response: `ApiResponse<OrderResponseDto>`
+- Note: user chỉ được hủy khi đơn ở trạng thái `PENDING`
+
+#### `PATCH /v1/orders/me/:id/return`
+
+- Auth: Bearer JWT
+- Path params: `id` (Required, uuid)
+- Response: `ApiResponse<OrderResponseDto>`
+- Note:
+  - chỉ cho phép khi đơn đang `DELIVERED`
+  - chỉ trong vòng 7 ngày kể từ `shipment.deliveredAt`
+  - khi user yêu cầu trả hàng, hệ thống set `status = RETURNING` và lưu `returnRequestedAt`
+  - nếu quá hạn 7 ngày mà chưa được admin xác nhận `RETURNED`, cron sẽ tự đưa đơn về `DELIVERED` và xóa `returnRequestedAt`
 
 ### 5.10) Vouchers (`/v1/vouchers`)
 

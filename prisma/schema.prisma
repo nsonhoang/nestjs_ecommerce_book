@@ -321,6 +321,7 @@ model Order {
   items            OrderItem[]
   voucherId        String?           // Mã giảm giá áp dụng cho đơn hàng (nếu có)
   voucher          Voucher?          @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  returnRequestedAt DateTime?        // Mốc bắt đầu cho luồng trả hàng
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 

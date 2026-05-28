@@ -40,6 +40,14 @@ export class BookService {
     await this.bookRepository.updateSoldCountByTx(tx, bookId, quantity);
   }
 
+  async decreaseSoldCountByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<void> {
+    await this.bookRepository.decreaseSoldCountByTx(tx, bookId, quantity);
+  }
+
   async getBooks(
     query: PaginateBookDto,
   ): Promise<PaginatedResult<BookResponseDto>> {
@@ -212,7 +220,7 @@ export class BookService {
   async updateBook(
     id: string,
     request: BookUpdateRequestDto,
-    file? : UploadFile,
+    file?: UploadFile,
   ): Promise<BookResponseDto> {
     try {
       // 1. VALIDATE DANH MỤC VÀ TÁC GIẢ
@@ -273,7 +281,7 @@ export class BookService {
             err,
           );
         });
-        console.log('Đã dọn rác thành công'); 
+        console.log('Đã dọn rác thành công');
       }
 
       return updatedBook;

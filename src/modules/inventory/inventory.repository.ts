@@ -93,6 +93,113 @@ export class InventoryRepository {
     return updateStock.count;
   }
 
+  async increaseStockByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<number> {
+    const updateStock = await tx.inventory.updateMany({
+      where: {
+        bookId: bookId,
+      },
+      data: { quantity: { increment: quantity } },
+    });
+    return updateStock.count;
+  }
+
+  async decrementStockAndLogByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+    createdBy?: string,
+    reason = 'Xuất kho khi tạo đơn hàng',
+  ): Promise<number> {
+    const inventory = await tx.inventory.findUnique({
+      where: { bookId },
+      select: { id: true, quantity: true },
+    });
+
+    if (!inventory || inventory.quantity < quantity) {
+      return 0;
+    }
+
+    const afterQty = inventory.quantity - quantity;
+
+    await tx.inventory.update({
+      where: { bookId },
+      data: { quantity: afterQty },
+    });
+
+    await tx.inventoryLog.create({
+      data: {
+        inventoryId: inventory.id,
+        change: -quantity,
+        beforeQty: inventory.quantity,
+        afterQty,
+        type: InventoryLogType.OUT,
+        reason,
+        createdBy,
+      },
+    });
+
+    return 1;
+  }
+
+  async increaseStockAndLogByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+    createdBy?: string,
+    reason = 'Nhập kho khi hoàn hàng/hủy đơn',
+  ): Promise<number> {
+    const inventory = await tx.inventory.findUnique({
+      where: { bookId },
+      select: { id: true, quantity: true },
+    });
+
+    if (!inventory) {
+      return 0;
+    }
+
+    const afterQty = inventory.quantity + quantity;
+
+    await tx.inventory.update({
+      where: { bookId },
+      data: { quantity: afterQty },
+    });
+
+    await tx.inventoryLog.create({
+      data: {
+        inventoryId: inventory.id,
+        change: quantity,
+        beforeQty: inventory.quantity,
+        afterQty,
+        type: InventoryLogType.IN,
+        reason,
+        createdBy,
+      },
+    });
+
+    return 1;
+  }
+
+  async createLogByTx(
+    tx: Prisma.TransactionClient,
+    data: {
+      inventoryId: string;
+      change: number;
+      beforeQty: number;
+      afterQty: number;
+      type: InventoryLogType;
+      reason?: string;
+      createdBy?: string;
+    },
+  ) {
+    return tx.inventoryLog.create({
+      data,
+    });
+  }
+
   async create(request: InventoryRequestDto): Promise<InventoryResponseDto> {
     //mặc dịnh quantity là 0 khi thêm sản phẩm vòa kho và phải có thêm bước nhập kho để cập nhật số lượng sau
     return this.prisma.inventory.create({

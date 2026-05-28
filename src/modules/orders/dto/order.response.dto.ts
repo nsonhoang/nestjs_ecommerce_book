@@ -34,6 +34,7 @@ export class OrderResponseDto {
   shippingCity!: string;
   shippingCountry!: string;
   note?: string | null;
+  returnRequestedAt?: Date | null;
   createdAt!: Date;
   updatedAt!: Date;
   shipment?: ShipmentResponseDto | null;

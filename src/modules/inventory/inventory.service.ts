@@ -38,7 +38,7 @@ export class InventoryService {
         Number(page),
         Number(limit),
         inventoryId,
-        type as any,
+        type,
         from,
         to,
       );
@@ -57,6 +57,65 @@ export class InventoryService {
       tx,
       bookId,
       quantity,
+    );
+  }
+
+  async increaseStockByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<number> {
+    return await this.inventoryRepository.increaseStockByTx(
+      tx,
+      bookId,
+      quantity,
+    );
+  }
+
+  async createLogByTx(
+    tx: Prisma.TransactionClient,
+    data: {
+      inventoryId: string;
+      change: number;
+      beforeQty: number;
+      afterQty: number;
+      type: InventoryLogType;
+      reason?: string;
+      createdBy?: string;
+    },
+  ) {
+    return this.inventoryRepository.createLogByTx(tx, data);
+  }
+
+  async decrementStockAndLogByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+    createdBy?: string,
+    reason?: string,
+  ): Promise<number> {
+    return this.inventoryRepository.decrementStockAndLogByTx(
+      tx,
+      bookId,
+      quantity,
+      createdBy,
+      reason,
+    );
+  }
+
+  async increaseStockAndLogByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+    createdBy?: string,
+    reason?: string,
+  ): Promise<number> {
+    return this.inventoryRepository.increaseStockAndLogByTx(
+      tx,
+      bookId,
+      quantity,
+      createdBy,
+      reason,
     );
   }
 

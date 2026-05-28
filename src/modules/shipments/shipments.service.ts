@@ -1,10 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ShipmentsRepository } from './shipments.repository';
 import { ShipmentRequestDto } from './dto/shipments.request.dto';
 import { OrderStatus, Prisma } from 'generated/prisma/client';
+import { InventoryService } from '../inventory/inventory.service';
+import { BookService } from '../book/book.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginateShipmentsDto } from './dto/paginate-shipments.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type ShipmentWithOrder = Prisma.ShipmentGetPayload<{
   include: { order: true };
@@ -13,10 +17,14 @@ type ShipmentWithOrder = Prisma.ShipmentGetPayload<{
 @Injectable()
 export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
+  private readonly returnRollbackWindowMs = 7 * 24 * 60 * 60 * 1000;
 
   constructor(
     private readonly shipmentsRepository: ShipmentsRepository,
     private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+    private readonly inventoryService: InventoryService,
+    private readonly bookService: BookService,
   ) {}
 
   private mapGhnShipmentStatusToOrderStatus(
@@ -107,10 +115,49 @@ export class ShipmentsService {
 
         // Update order status only when mapping is known
         if (nextOrderStatus) {
-          await tx.order.update({
-            where: { id: shipment.orderId },
-            data: { status: nextOrderStatus },
-          });
+          // Special handling for CANCELLED: try to perform restock similar to cancelOrder()
+          if (nextOrderStatus === OrderStatus.CANCELLED) {
+            const order = await tx.order.findUnique({
+              where: { id: shipment.orderId },
+              include: { items: true },
+            });
+
+            if (order && order.status !== OrderStatus.CANCELLED) {
+              // Restock when order hasn't actually been shipped to customer.
+              // This covers both PENDING and cases where admin moved to PROCESSING
+              // but GHN cancelled before `shippedAt` was set.
+              const shouldRestock =
+                order.status === OrderStatus.PENDING || !shipment.shippedAt;
+
+              if (shouldRestock) {
+                for (const item of order.items) {
+                  await this.inventoryService.increaseStockAndLogByTx(
+                    tx,
+                    item.bookId,
+                    item.quantity,
+                    undefined,
+                    'Nhập kho do hủy đơn (GHN)',
+                  );
+
+                  await this.bookService.decreaseSoldCountByTx(
+                    tx as Prisma.TransactionClient,
+                    item.bookId,
+                    item.quantity,
+                  );
+                }
+              }
+
+              await tx.order.update({
+                where: { id: shipment.orderId },
+                data: { status: OrderStatus.CANCELLED },
+              });
+            }
+          } else {
+            await tx.order.update({
+              where: { id: shipment.orderId },
+              data: { status: nextOrderStatus },
+            });
+          }
         }
       });
 
@@ -171,6 +218,65 @@ export class ShipmentsService {
         `Failed to update shipment status for shipment ID ${shipmentId}`,
         error,
       );
+      throw error;
+    }
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async rollbackExpiredReturnOrders(): Promise<void> {
+    try {
+      const cutoff = new Date(Date.now() - this.returnRollbackWindowMs);
+
+      const expiredReturnOrders = await this.prisma.order.findMany({
+        where: {
+          status: OrderStatus.RETURNING,
+          returnRequestedAt: {
+            lt: cutoff,
+          },
+        },
+        select: {
+          id: true,
+          code: true,
+          userId: true,
+        },
+      });
+
+      if (!expiredReturnOrders.length) {
+        return;
+      }
+
+      for (const order of expiredReturnOrders) {
+        const updated = await this.prisma.order.updateMany({
+          where: {
+            id: order.id,
+            status: OrderStatus.RETURNING,
+            returnRequestedAt: {
+              lt: cutoff,
+            },
+          },
+          data: {
+            status: OrderStatus.DELIVERED,
+            returnRequestedAt: null,
+          },
+        });
+
+        if (updated.count === 0) {
+          // Đơn đã được xử lý ở luồng khác (ví dụ admin chốt RETURNED) nên không gửi lại thông báo.
+          continue;
+        }
+
+        await this.notificationsService.sendNotificationToUser(
+          order.userId,
+          'Đơn hàng đã hết hạn trả hàng',
+          `Đơn hàng ${order.code} đã quá 7 ngày ở trạng thái trả hàng, hệ thống tự động chuyển về DELIVERED.`,
+        );
+      }
+
+      this.logger.log(
+        `Đã tự động chuyển ${expiredReturnOrders.length} đơn RETURNING quá hạn về DELIVERED`,
+      );
+    } catch (error) {
+      this.logger.error('Lỗi khi rollback đơn RETURNING quá hạn', error);
       throw error;
     }
   }

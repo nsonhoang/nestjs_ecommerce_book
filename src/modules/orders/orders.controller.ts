@@ -128,5 +128,51 @@ export class OrdersController {
     return ApiResponse.ok(order, 'Cập nhật trạng thái đơn hàng thành công');
   }
 
-  //hủy đơn hàng dành cho khách hàng, đơn hàng ở trạng thái pending mới được hủy, khi hủy xong sẽ cộng lại số lượng vào inventory và gửi thông báo cho khách hàng
+  @Patch('/:id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
+  @ApiOperation({ summary: 'Hủy đơn hàng (admin/staff)' })
+  @ApiParam({ name: 'id', description: 'Order id' })
+  @ApiOkResponse({ description: 'Hủy đơn hàng thành công' })
+  async cancelOrderByAdmin(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<OrderResponseDto>> {
+    const order = await this.ordersService.cancelOrderByAdmin(id);
+    return ApiResponse.ok(order, 'Hủy đơn hàng thành công');
+  }
+
+  @Patch('/me/:id/cancel')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
+  @ApiOperation({ summary: 'Hủy đơn hàng của tôi' })
+  @ApiParam({ name: 'id', description: 'Order id' })
+  @ApiOkResponse({ description: 'Hủy đơn hàng thành công' })
+  async cancelOrderByUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ): Promise<ApiResponse<OrderResponseDto>> {
+    const order = await this.ordersService.cancelOrderByUser(
+      id,
+      req.user.userId,
+    );
+    return ApiResponse.ok(order, 'Hủy đơn hàng thành công');
+  }
+
+  @Patch('/me/:id/return')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: minutes(1), limit: 20 } })
+  @ApiOperation({ summary: 'Yêu cầu trả hàng' })
+  @ApiParam({ name: 'id', description: 'Order id' })
+  @ApiOkResponse({ description: 'Yêu cầu trả hàng thành công' })
+  async requestReturnOrder(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ): Promise<ApiResponse<OrderResponseDto>> {
+    const order = await this.ordersService.requestReturnOrder(
+      id,
+      req.user.userId,
+    );
+    return ApiResponse.ok(order, 'Yêu cầu trả hàng thành công');
+  }
 }

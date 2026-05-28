@@ -28,6 +28,17 @@ export class BookRepository {
     });
   }
 
+  async decreaseSoldCountByTx(
+    tx: Prisma.TransactionClient,
+    bookId: string,
+    quantity: number,
+  ): Promise<void> {
+    await tx.book.update({
+      where: { id: bookId },
+      data: { soldCount: { decrement: quantity } },
+    });
+  }
+
   async getBooks(
     query: PaginateBookDto,
   ): Promise<PaginatedResult<BookDetailResponseDto>> {

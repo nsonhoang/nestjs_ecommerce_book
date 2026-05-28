@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -41,6 +42,11 @@ type OrderItemPayload = {
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+  private readonly orderInclude = {
+    items: true,
+    shipment: true,
+  } as const;
+  private readonly returnWindowMs = 7 * 24 * 60 * 60 * 1000;
 
   private buildTotalWeight(items: OrderItemPayload[]): number {
     // Tạm tính 300g / quyển (có thể chuyển sang lấy từ Book/Inventory sau)
@@ -161,6 +167,7 @@ export class OrdersService {
           discountAmount: discountAmountInTx,
           shippingFee,
           totalAmount,
+          returnRequestedAt: null,
           shippingName: address.fullName,
           shippingPhone: address.phone,
           shippingAddress: address.addressLine,
@@ -186,10 +193,12 @@ export class OrdersService {
 
         for (const item of items) {
           const updateStockCount =
-            await this.inventoryService.decrementStockByTx(
+            await this.inventoryService.decrementStockAndLogByTx(
               tx,
               item.bookId,
               item.quantity,
+              user.userId,
+              'Xuất kho khi tạo đơn hàng',
             );
 
           if (updateStockCount === 0) {
@@ -303,7 +312,55 @@ export class OrdersService {
     // Chỉ tạo shipment khi chuyển sang PROCESSING (người bán/admin xác nhận đơn)và chỉ update processing đc thôi
     // còn trạng thái khác sẽ đc cập nhật thông qua webhook của GHN, tránh việc admin có thể tự ý chuyển trạng thái giao hàng khi chưa tạo đơn GHN, hoặc chuyển sang trạng thái khác ngoài quy trình xử lý đơn hàng thông thường. Ngoài ra việc tạo đơn GHN sẽ được thực hiện trong transaction khi cập nhật sang PROCESSING để đảm bảo tính nhất quán dữ liệu giữa đơn hàng và shipment.
 
+    const returnedStatus = 'RETURNED' as OrderStatus;
+
     if (status !== OrderStatus.PROCESSING) {
+      if (status === returnedStatus) {
+        if (order.status !== OrderStatus.RETURNING) {
+          throw new BadRequestException(
+            'Chỉ có thể chuyển sang RETURNED khi đơn đang ở trạng thái RETURNING',
+          );
+        }
+
+        return await this.prisma.$transaction(async (tx) => {
+          for (const item of order.items) {
+            const restoredInventoryCount =
+              await this.inventoryService.increaseStockAndLogByTx(
+                tx,
+                item.bookId,
+                item.quantity,
+                undefined,
+                'Nhập kho do hàng trả về',
+              );
+
+            if (restoredInventoryCount === 0) {
+              throw new BadRequestException(
+                `Không thể hoàn kho cho sách ${item.bookTitle}`,
+              );
+            }
+          }
+
+          const updatedOrder = await tx.order.update({
+            where: { id: orderId },
+            data: { status: returnedStatus, returnRequestedAt: null },
+            include: { items: true },
+          });
+
+          await this.notificationsService.sendNotificationToUser(
+            order.userId,
+            'Đơn hàng đã được xác nhận trả về',
+            `Đơn hàng ${order.code} đã được xác nhận trả về và nhập lại kho.`,
+          );
+
+          return this.mapOrder(updatedOrder);
+        });
+      }
+
+      // If admin uses generic status endpoint to set CANCELLED, delegate to cancelOrder
+      if (status === OrderStatus.CANCELLED) {
+        return this.cancelOrder(orderId);
+      }
+
       return await this.prisma.order.update({
         where: { id: orderId },
         data: { status },
@@ -417,6 +474,149 @@ export class OrdersService {
     ); // cái này là chi nổ khi admin cập nhật thôi chứ muốn trạng thái đổi liền phải thông qua webhook
 
     return this.mapOrder(updatedOrder);
+  }
+
+  async cancelOrderByAdmin(orderId: string): Promise<OrderResponseDto> {
+    return this.cancelOrder(orderId);
+  }
+
+  async cancelOrderByUser(
+    orderId: string,
+    userId: string,
+  ): Promise<OrderResponseDto> {
+    return this.cancelOrder(orderId, userId);
+  }
+
+  async requestReturnOrder(
+    orderId: string,
+    userId: string,
+  ): Promise<OrderResponseDto> {
+    try {
+      const order = await this.ordersRepository.findById(orderId);
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+
+      if (order.userId !== userId) {
+        throw new ForbiddenException('Không có quyền thao tác đơn hàng này');
+      }
+
+      if (order.status !== OrderStatus.DELIVERED) {
+        throw new BadRequestException(
+          'Chỉ có thể yêu cầu trả hàng khi đơn đã được giao thành công',
+        );
+      }
+
+      const deliveredAt = order.shipment?.deliveredAt;
+      if (!deliveredAt) {
+        throw new BadRequestException(
+          'Không xác định được thời điểm giao hàng để yêu cầu trả hàng',
+        );
+      }
+
+      const returnDeadline = deliveredAt.getTime() + this.returnWindowMs;
+      if (Date.now() > returnDeadline) {
+        throw new BadRequestException(
+          'Đã quá hạn 7 ngày kể từ khi giao hàng, không thể yêu cầu trả hàng',
+        );
+      }
+
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.RETURNING,
+          returnRequestedAt: new Date(),
+        },
+        include: this.orderInclude,
+      });
+
+      await this.notificationsService.sendNotificationToUser(
+        order.userId,
+        'Yêu cầu trả hàng đã được ghi nhận',
+        `Đơn hàng ${order.code} của bạn đã được chuyển sang trạng thái trả hàng.`,
+      );
+
+      return this.mapOrder(updatedOrder);
+    } catch (error) {
+      this.logger.error(`Lỗi khi yêu cầu trả hàng cho đơn ${orderId}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Không thể cập nhật trả hàng');
+    }
+  }
+
+  private async cancelOrder(
+    orderId: string,
+    userId?: string,
+  ): Promise<OrderResponseDto> {
+    try {
+      const order = await this.ordersRepository.findById(orderId);
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+
+      if (userId && order.userId !== userId) {
+        throw new ForbiddenException('Không có quyền thao tác đơn hàng này');
+      }
+
+      if (order.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Đơn hàng đã bị hủy trước đó');
+      }
+
+      if (order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException(
+          'Chỉ có thể hủy đơn khi đơn đang ở trạng thái chờ xác nhận',
+        );
+      }
+
+      const cancelledOrder = await this.prisma.$transaction(async (tx) => {
+        for (const item of order.items) {
+          const restoredInventoryCount =
+            await this.inventoryService.increaseStockAndLogByTx(
+              tx,
+              item.bookId,
+              item.quantity,
+              order.userId,
+              'Nhập kho do hủy đơn hàng',
+            );
+
+          if (restoredInventoryCount === 0) {
+            throw new BadRequestException(
+              `Không thể hoàn kho cho sách ${item.bookTitle}`,
+            );
+          }
+
+          await this.bookService.decreaseSoldCountByTx(
+            tx as Prisma.TransactionClient,
+            item.bookId,
+            item.quantity,
+          );
+        }
+
+        return await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: OrderStatus.CANCELLED,
+          },
+          include: this.orderInclude,
+        });
+      });
+
+      await this.notificationsService.sendNotificationToUser(
+        order.userId,
+        'Đơn hàng đã bị hủy',
+        `Đơn hàng ${order.code} của bạn đã được hủy thành công.`,
+      );
+
+      return this.mapOrder(cancelledOrder);
+    } catch (error) {
+      this.logger.error(`Lỗi khi hủy đơn hàng ${orderId}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Không thể hủy đơn hàng');
+    }
   }
 
   // hàm này để kiểm tra và tính tiền tiền của  item
