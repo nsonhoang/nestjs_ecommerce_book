@@ -18,7 +18,10 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.enableCors({ origin: 'http://localhost:5173', credentials: true });
+  app.enableCors({
+    origin: ['http://localhost:5173', 'http://192.168.1.183:8081'],
+    credentials: true,
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('E-Commerce API')
