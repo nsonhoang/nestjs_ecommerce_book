@@ -9,6 +9,6 @@ import { RoleRepository } from './role.repository';
   imports: [PrismaModule],
   controllers: [RoleController],
   providers: [RoleService, RoleRepository],
-  exports: [RoleService, RoleRepository],
+  exports: [RoleService],
 })
 export class RoleModule {}

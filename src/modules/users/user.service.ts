@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
@@ -49,6 +50,9 @@ export class UserService {
       return user;
     } catch (error) {
       this.logger.error('Failed to fetch user profile', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new BadRequestException('Failed to fetch user profile');
     }
   }
@@ -75,6 +79,9 @@ export class UserService {
       }
       return user;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       this.logger.error(`Failed to fetch user with id ${id}`, error);
       throw new BadRequestException('Lỗi khi lấy thông tin người dùng');
     }
@@ -114,6 +121,9 @@ export class UserService {
       return updatedUser;
     } catch (error) {
       this.logger.error(`Failed to update user with id ${id}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new BadRequestException('Lỗi khi cập nhật thông tin người dùng');
     }
   }
@@ -163,6 +173,9 @@ export class UserService {
       return updatedUser;
     } catch (error) {
       this.logger.error(`Failed to update user with id ${userId}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new BadRequestException('Lỗi khi cập nhật thông tin người dùng');
     }
   }

@@ -7,9 +7,9 @@ import { ImageBookRepository } from './image-book.repository';
 import { MediaModule } from 'src/media/media.module';
 
 @Module({
-  imports: [PrismaModule, MediaModule, PrismaModule],
+  imports: [PrismaModule, MediaModule],
   controllers: [ImageBookController],
   providers: [ImageBookService, ImageBookRepository],
-  exports: [ImageBookService, ImageBookRepository],
+  exports: [ImageBookService],
 })
 export class ImageBookModule {}

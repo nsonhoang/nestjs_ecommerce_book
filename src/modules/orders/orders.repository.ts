@@ -218,8 +218,26 @@ export class OrdersRepository {
 
     return Boolean(match);
   }
-  async updateStatus() {
-    //nếu hủy đơn thì phải cộng số lượng lại vào kho
-    //còn thêm module shipment nữa
+  async update(
+    orderId: string,
+    data: Prisma.OrderUpdateInput,
+  ): Promise<OrderResponseDto> {
+    return await this.prisma.order.update({
+      where: { id: orderId },
+      data,
+      include: orderInclude,
+    });
+  }
+
+  async updateByTx(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    data: Prisma.OrderUpdateInput,
+  ): Promise<OrderResponseDto> {
+    return await tx.order.update({
+      where: { id: orderId },
+      data,
+      include: orderInclude,
+    });
   }
 }

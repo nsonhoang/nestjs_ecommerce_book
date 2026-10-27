@@ -42,10 +42,6 @@ type OrderItemPayload = {
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
-  private readonly orderInclude = {
-    items: true,
-    shipment: true,
-  } as const;
   private readonly returnWindowMs = 7 * 24 * 60 * 60 * 1000;
 
   private buildTotalWeight(items: OrderItemPayload[]): number {
@@ -272,78 +268,100 @@ export class OrdersService {
   }
 
   async getOrderById(id: string, userId: string): Promise<OrderResponseDto> {
-    const order = await this.ordersRepository.findById(id);
-    if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng');
-    }
-    if (order.userId !== userId) {
-      throw new ForbiddenException('Không có quyền xem đơn hàng này');
-    }
+    try {
+      const order = await this.ordersRepository.findById(id);
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+      if (order.userId !== userId) {
+        throw new ForbiddenException('Không có quyền xem đơn hàng này');
+      }
 
-    return order;
+      return order;
+    } catch (error) {
+      this.logger.error(`Failed to get order ${id}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Failed to get order ${id}`);
+    }
   }
 
   async getByFilter(
     paginationQuery: PaginateOrderDto,
   ): Promise<PaginatedResult<OrderResponseDto>> {
-    //lấy tất cả đơn hàng, cái này phải filter
-    return this.ordersRepository.findByFilter(paginationQuery);
+    try {
+      return await this.ordersRepository.findByFilter(paginationQuery);
+    } catch (error) {
+      this.logger.error('Failed to get orders by filter', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to get orders by filter');
+    }
   }
 
   async getMyOrders(
     userId: string,
     paginationQuery: PaginateOrderDto,
   ): Promise<PaginatedResult<OrderResponseDto>> {
-    delete paginationQuery.userId;
-    return this.ordersRepository.findByFilter({ ...paginationQuery, userId });
+    try {
+      delete paginationQuery.userId;
+      return await this.ordersRepository.findByFilter({ ...paginationQuery, userId });
+    } catch (error) {
+      this.logger.error(`Failed to get orders for user ${userId}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Failed to get orders for user ${userId}`);
+    }
   }
 
-  //nếu chuyển trang thái sang processing thì sẽ tạo đơn hàng vận chuyển, trạng thái ban đầu là pending,
-  //  sau đó khi ghn gửi web hook về thì sẽ cập nhật trạng thái đơn hàng vận chuyển tương ứng
   async updateOrderStatus(
     orderId: string,
     status: OrderStatus,
   ): Promise<OrderResponseDto> {
-    const order = await this.ordersRepository.findById(orderId);
-    if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng');
-    }
-    // bắn thông báo cho khách hàng khi có sự thay đổi trạng thái đơn hàng, cái này sẽ được gọi bởi admin khi xác nhận đơn hàng, hoặc khi giao hàng
-    // Chỉ tạo shipment khi chuyển sang PROCESSING (người bán/admin xác nhận đơn)và chỉ update processing đc thôi
-    // còn trạng thái khác sẽ đc cập nhật thông qua webhook của GHN, tránh việc admin có thể tự ý chuyển trạng thái giao hàng khi chưa tạo đơn GHN, hoặc chuyển sang trạng thái khác ngoài quy trình xử lý đơn hàng thông thường. Ngoài ra việc tạo đơn GHN sẽ được thực hiện trong transaction khi cập nhật sang PROCESSING để đảm bảo tính nhất quán dữ liệu giữa đơn hàng và shipment.
+    try {
+      const order = await this.ordersRepository.findById(orderId);
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+      // bắn thông báo cho khách hàng khi có sự thay đổi trạng thái đơn hàng, cái này sẽ được gọi bởi admin khi xác nhận đơn hàng, hoặc khi giao hàng
+      // Chỉ tạo shipment khi chuyển sang PROCESSING (người bán/admin xác nhận đơn)và chỉ update processing đc thôi
+      // còn trạng thái khác sẽ đc cập nhật thông qua webhook của GHN, tránh việc admin có thể tự ý chuyển trạng thái giao hàng khi chưa tạo đơn GHN, hoặc chuyển sang trạng thái khác ngoài quy trình xử lý đơn hàng thông thường. Ngoài ra việc tạo đơn GHN sẽ được thực hiện trong transaction khi cập nhật sang PROCESSING để đảm bảo tính nhất quán dữ liệu giữa đơn hàng và shipment.
 
-    const returnedStatus = 'RETURNED' as OrderStatus;
+      const returnedStatus = 'RETURNED' as OrderStatus;
 
-    if (status !== OrderStatus.PROCESSING) {
-      if (status === returnedStatus) {
-        if (order.status !== OrderStatus.RETURNING) {
-          throw new BadRequestException(
-            'Chỉ có thể chuyển sang RETURNED khi đơn đang ở trạng thái RETURNING',
-          );
-        }
-
-        return await this.prisma.$transaction(async (tx) => {
-          for (const item of order.items) {
-            const restoredInventoryCount =
-              await this.inventoryService.increaseStockAndLogByTx(
-                tx,
-                item.bookId,
-                item.quantity,
-                undefined,
-                'Nhập kho do hàng trả về',
-              );
-
-            if (restoredInventoryCount === 0) {
-              throw new BadRequestException(
-                `Không thể hoàn kho cho sách ${item.bookTitle}`,
-              );
-            }
+      if (status !== OrderStatus.PROCESSING) {
+        if (status === returnedStatus) {
+          if (order.status !== OrderStatus.RETURNING) {
+            throw new BadRequestException(
+              'Chỉ có thể chuyển sang RETURNED khi đơn đang ở trạng thái RETURNING',
+            );
           }
 
-          const updatedOrder = await tx.order.update({
-            where: { id: orderId },
-            data: { status: returnedStatus, returnRequestedAt: null },
-            include: { items: true },
+          const result = await this.prisma.$transaction(async (tx) => {
+            for (const item of order.items) {
+              const restoredInventoryCount =
+                await this.inventoryService.increaseStockAndLogByTx(
+                  tx,
+                  item.bookId,
+                  item.quantity,
+                  undefined,
+                  'Nhập kho do hàng trả về',
+                );
+
+              if (restoredInventoryCount === 0) {
+                throw new BadRequestException(
+                  `Không thể hoàn kho cho sách ${item.bookTitle}`,
+                );
+              }
+            }
+
+            return await this.ordersRepository.updateByTx(tx, orderId, {
+              status: returnedStatus,
+              returnRequestedAt: null,
+            });
           });
 
           await this.notificationsService.sendNotificationToUser(
@@ -352,128 +370,126 @@ export class OrdersService {
             `Đơn hàng ${order.code} đã được xác nhận trả về và nhập lại kho.`,
           );
 
-          return this.mapOrder(updatedOrder);
+          return this.mapOrder(result);
+        }
+
+        // If admin uses generic status endpoint to set CANCELLED, delegate to cancelOrder
+        if (status === OrderStatus.CANCELLED) {
+          return this.cancelOrder(orderId);
+        }
+
+        const updatedOrder = await this.ordersRepository.update(orderId, {
+          status,
         });
+        return this.mapOrder(updatedOrder);
       }
 
-      // If admin uses generic status endpoint to set CANCELLED, delegate to cancelOrder
-      if (status === OrderStatus.CANCELLED) {
-        return this.cancelOrder(orderId);
+      // Idempotent: nếu đã có shipment thì chỉ update status
+      const existingShipment =
+        await this.shipmentsService.getShipmentByOrderId(orderId);
+      if (existingShipment) {
+        const updatedOrder = await this.ordersRepository.update(orderId, {
+          status,
+        });
+        return this.mapOrder(updatedOrder);
       }
 
-      return await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status },
-        include: { items: true },
-      });
-    }
-
-    // Idempotent: nếu đã có shipment thì chỉ update status
-    const existingShipment =
-      await this.shipmentsService.getShipmentByOrderId(orderId);
-    if (existingShipment) {
-      return await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status },
-        include: { items: true },
-      });
-    }
-
-    const amountBeforeShipping = Math.max(
-      0,
-      order.subtotalAmount - order.discountAmount,
-    );
-
-    if (!order.shippingWardCode || !order.shippingDistrictId) {
-      throw new BadRequestException(
-        'Thiếu shippingWardCode/shippingDistrictId để tạo đơn GHN. Vui lòng đặt lại đơn với địa chỉ hợp lệ.',
+      const amountBeforeShipping = Math.max(
+        0,
+        order.subtotalAmount - order.discountAmount,
       );
-    }
 
-    const ghnCreatePayload: IGhnCreateOrderRequest = {
-      payment_type_id: 2, // 2: Khách trả phí ship
-      note: order.note ?? '',
-      required_note: 'KHONGCHOXEMHANG',
-      client_order_code: order.code,
-      to_name: order.shippingName,
-      to_phone: order.shippingPhone,
-      to_address: order.shippingAddress,
-      // Dùng snapshot GHN identifiers đã lưu ở Order lúc checkout
-      to_ward_code: order.shippingWardCode,
-      to_district_id: order.shippingDistrictId,
-      cod_amount:
-        order.paymentMethod === OrderPaymentMethod.COD
-          ? amountBeforeShipping
-          : 0,
-      content: 'Book order',
-      weight: this.buildTotalWeight(
-        order.items.map((i) => ({
-          bookId: i.bookId,
-          bookTitle: i.bookTitle,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          discountAmount: i.discountAmount,
-          totalAmount: i.totalAmount,
+      if (!order.shippingWardCode || !order.shippingDistrictId) {
+        throw new BadRequestException(
+          'Thiếu shippingWardCode/shippingDistrictId để tạo đơn GHN. Vui lòng đặt lại đơn với địa chỉ hợp lệ.',
+        );
+      }
+
+      const ghnCreatePayload: IGhnCreateOrderRequest = {
+        payment_type_id: 2, // 2: Khách trả phí ship
+        note: order.note ?? '',
+        required_note: 'KHONGCHOXEMHANG',
+        client_order_code: order.code,
+        to_name: order.shippingName,
+        to_phone: order.shippingPhone,
+        to_address: order.shippingAddress,
+        // Dùng snapshot GHN identifiers đã lưu ở Order lúc checkout
+        to_ward_code: order.shippingWardCode,
+        to_district_id: order.shippingDistrictId,
+        cod_amount:
+          order.paymentMethod === OrderPaymentMethod.COD
+            ? amountBeforeShipping
+            : 0,
+        content: 'Book order',
+        weight: this.buildTotalWeight(
+          order.items.map((i) => ({
+            bookId: i.bookId,
+            bookTitle: i.bookTitle,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            discountAmount: i.discountAmount,
+            totalAmount: i.totalAmount,
+          })),
+        ),
+        length: 10,
+        width: 10,
+        height: 10,
+        service_type_id: 2,
+        insurance_value: amountBeforeShipping,
+        items: order.items.map((item) => ({
+          name: item.bookTitle,
+          code: item.bookId,
+          quantity: item.quantity,
+          price: item.unitPrice,
         })),
-      ),
-      length: 10,
-      width: 10,
-      height: 10,
-      service_type_id: 2,
-      insurance_value: amountBeforeShipping,
-      items: order.items.map((item) => ({
-        name: item.bookTitle,
-        code: item.bookId,
-        quantity: item.quantity,
-        price: item.unitPrice,
-      })),
-    };
+      };
 
-    // NOTE: Gọi GHN ở đây (khi chuyển PROCESSING) để tránh tạo shipment sớm.
-    const ghnOrder =
-      await this.ghnService.createShippingOrder(ghnCreatePayload);
-    const shippingFee = Math.round(
-      ghnOrder.total_fee ?? ghnOrder.fee?.total ?? 0,
-    );
-    const totalAmount = amountBeforeShipping + shippingFee;
-
-    // bắn thông báo ở đây
-
-    const updatedOrder = await this.prisma.$transaction(async (tx) => {
-      await this.shipmentsService.createShipment(
-        {
-          orderId: orderId,
-          ghnOrderCode: ghnOrder.order_code,
-          codAmount:
-            order.paymentMethod === OrderPaymentMethod.COD
-              ? amountBeforeShipping
-              : 0,
-          shippingFee,
-          expectedDelivery: ghnOrder.expected_delivery_time
-            ? new Date(ghnOrder.expected_delivery_time)
-            : undefined,
-        },
-        tx,
+      // NOTE: Gọi GHN ở đây (khi chuyển PROCESSING) để tránh tạo shipment sớm.
+      const ghnOrder =
+        await this.ghnService.createShippingOrder(ghnCreatePayload);
+      const shippingFee = Math.round(
+        ghnOrder.total_fee ?? ghnOrder.fee?.total ?? 0,
       );
+      const totalAmount = amountBeforeShipping + shippingFee;
 
-      return await tx.order.update({
-        where: { id: orderId },
-        data: {
+      const updatedOrder = await this.prisma.$transaction(async (tx) => {
+        await this.shipmentsService.createShipment(
+          {
+            orderId: orderId,
+            ghnOrderCode: ghnOrder.order_code,
+            codAmount:
+              order.paymentMethod === OrderPaymentMethod.COD
+                ? amountBeforeShipping
+                : 0,
+            shippingFee,
+            expectedDelivery: ghnOrder.expected_delivery_time
+              ? new Date(ghnOrder.expected_delivery_time)
+              : undefined,
+          },
+          tx,
+        );
+
+        return await this.ordersRepository.updateByTx(tx, orderId, {
           status: OrderStatus.PROCESSING,
           shippingFee,
           totalAmount,
-        },
-        include: { items: true },
+        });
       });
-    });
-    // nổ thống báo tại đây
-    await this.notificationsService.sendNotificationToUser(
-      order.userId,
-      'Đơn hàng đã được cập nhật trạng thái',
-      `Đơn hàng ${order.code} của bạn đã được cập nhật và đang được xử lý.Ngày giao dự kiến: ${ghnOrder.expected_delivery_time ? new Date(ghnOrder.expected_delivery_time).toLocaleDateString() : 'Đang cập nhật'}. Cảm ơn bạn đã mua hàng!`,
-    ); // cái này là chi nổ khi admin cập nhật thôi chứ muốn trạng thái đổi liền phải thông qua webhook
+      // nổ thống báo tại đây
+      await this.notificationsService.sendNotificationToUser(
+        order.userId,
+        'Đơn hàng đã được cập nhật trạng thái',
+        `Đơn hàng ${order.code} của bạn đã được cập nhật và đang được xử lý.Ngày giao dự kiến: ${ghnOrder.expected_delivery_time ? new Date(ghnOrder.expected_delivery_time).toLocaleDateString() : 'Đang cập nhật'}. Cảm ơn bạn đã mua hàng!`,
+      ); // cái này là chi nổ khi admin cập nhật thôi chứ muốn trạng thái đổi liền phải thông qua webhook
 
-    return this.mapOrder(updatedOrder);
+      return this.mapOrder(updatedOrder);
+    } catch (error) {
+      this.logger.error(`Lỗi khi cập nhật trạng thái đơn hàng ${orderId}`, error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Không thể cập nhật trạng thái đơn hàng');
+    }
   }
 
   async cancelOrderByAdmin(orderId: string): Promise<OrderResponseDto> {
@@ -521,15 +537,10 @@ export class OrdersService {
         );
       }
 
-      const updatedOrder = await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          status: OrderStatus.RETURNING,
-          returnRequestedAt: new Date(),
-        },
-        include: this.orderInclude,
+      const updatedOrder = await this.ordersRepository.update(orderId, {
+        status: OrderStatus.RETURNING,
+        returnRequestedAt: new Date(),
       });
-
       await this.notificationsService.sendNotificationToUser(
         order.userId,
         'Yêu cầu trả hàng đã được ghi nhận',
@@ -594,12 +605,8 @@ export class OrdersService {
           );
         }
 
-        return await tx.order.update({
-          where: { id: orderId },
-          data: {
-            status: OrderStatus.CANCELLED,
-          },
-          include: this.orderInclude,
+        return await this.ordersRepository.updateByTx(tx, orderId, {
+          status: OrderStatus.CANCELLED,
         });
       });
 

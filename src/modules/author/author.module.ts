@@ -9,6 +9,6 @@ import { AuthorRepository } from './author.repository';
   imports: [PrismaModule],
   controllers: [AuthorController],
   providers: [AuthorService, AuthorRepository],
-  exports: [AuthorService, AuthorRepository],
+  exports: [AuthorService],
 })
 export class AuthorModule {}

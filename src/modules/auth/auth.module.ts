@@ -25,8 +25,8 @@ import { ResetPasswordConfirmStrategy } from 'src/strategies/reset-password.stra
       secret: process.env.JWT_SECRET || 'your-secret-key',
       signOptions: { expiresIn: '15m' },
     }),
-    UserModule, // ← import UserModule để dùng UserRepository
-    RoleModule, // ← import RoleModule để dùng RoleRepository
+    UserModule, // ← import UserModule để dùng UserService
+    RoleModule, // ← import RoleModule để dùng RoleService
     NotificationsModule, // ← import NotificationsModule để xóa token của user device khi logout và add token mới khi login
   ],
   controllers: [AuthController],

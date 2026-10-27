@@ -25,6 +25,6 @@ import { ShipmentsModule } from '../shipments/shipments.module';
   ],
   controllers: [GhnController],
   providers: [GhnService, GhnRepository],
-  exports: [GhnService, GhnRepository], // Cho phép AddressModule sử dụng GhnService
+  exports: [GhnService], // Cho phép AddressModule sử dụng GhnService
 })
 export class GhnModule {}

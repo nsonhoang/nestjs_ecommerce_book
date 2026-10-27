@@ -9,6 +9,6 @@ import { CategoryRepository } from './category.repository';
   imports: [PrismaModule],
   controllers: [CategoryController],
   providers: [CategoryService, CategoryRepository],
-  exports: [CategoryService, CategoryRepository],
+  exports: [CategoryService],
 })
 export class CategoryModule {}

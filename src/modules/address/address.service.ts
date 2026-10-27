@@ -5,7 +5,6 @@ import { AddressResponseDTO } from './dto/address.response';
 import { AddressRequestDTO } from './dto/address.request.dto';
 import { AddressRepository } from './address.repository';
 import type { AddressWithLocation } from './address.repository';
-import { GhnRepository } from '../ghn/ghn.repository';
 import { GhnService } from '../ghn/ghn.service';
 import { WardResponse } from '../ghn/dto/ghn.response.dto';
 
@@ -15,7 +14,6 @@ export class AddressService {
 
   constructor(
     private readonly addressRepository: AddressRepository,
-    private readonly ghnRepository: GhnRepository,
     private readonly ghnService: GhnService,
   ) {}
 
@@ -42,14 +40,14 @@ export class AddressService {
     userId: string,
   ): Promise<AddressResponseDTO> {
     try {
-      const provinceExist = await this.ghnRepository.findProvinceById(
+      const provinceExist = await this.ghnService.findProvinceById(
         createAddressDto.provinceId,
       );
       if (!provinceExist) {
         throw new NotFoundException('Tỉnh/Thành phố không tồn tại');
       }
 
-      const districtExist = await this.ghnRepository.findDistrictById(
+      const districtExist = await this.ghnService.findDistrictById(
         createAddressDto.districtId,
       );
       if (
@@ -202,13 +200,13 @@ export class AddressService {
     const nextWardCode = updateAddressDto.wardCode ?? existing.wardCode;
 
     const provinceExist =
-      await this.ghnRepository.findProvinceById(nextProvinceId);
+      await this.ghnService.findProvinceById(nextProvinceId);
     if (!provinceExist) {
       throw new NotFoundException('Tỉnh/Thành phố không tồn tại');
     }
 
     const districtExist =
-      await this.ghnRepository.findDistrictById(nextDistrictId);
+      await this.ghnService.findDistrictById(nextDistrictId);
     if (!districtExist || districtExist.provinceId !== nextProvinceId) {
       throw new NotFoundException('Quận/Huyện không tồn tại');
     }
@@ -249,13 +247,13 @@ export class AddressService {
     const nextWardCode = updateAddressDto.wardCode ?? existing.wardCode;
 
     const provinceExist =
-      await this.ghnRepository.findProvinceById(nextProvinceId);
+      await this.ghnService.findProvinceById(nextProvinceId);
     if (!provinceExist) {
       throw new NotFoundException('Tỉnh/Thành phố không tồn tại');
     }
 
     const districtExist =
-      await this.ghnRepository.findDistrictById(nextDistrictId);
+      await this.ghnService.findDistrictById(nextDistrictId);
     if (!districtExist || districtExist.provinceId !== nextProvinceId) {
       throw new NotFoundException('Quận/Huyện không tồn tại');
     }

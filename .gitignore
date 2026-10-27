@@ -60,3 +60,8 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /generated/prisma
 
 /nestjs-ecommerce-book-firebase-adminsdk.json
+
+# Agent & tools cache
+.codegraph
+codegraph.json
+.omp

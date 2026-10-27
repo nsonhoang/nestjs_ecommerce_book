@@ -67,6 +67,14 @@ export class GhnService {
     }));
   }
 
+  async findProvinceById(id: number) {
+    return this.ghnRepository.findProvinceById(id);
+  }
+
+  async findDistrictById(id: number) {
+    return this.ghnRepository.findDistrictById(id);
+  }
+
   async onModuleInit() {
     const count = await this.prisma.province.count();
     if (count === 0) {

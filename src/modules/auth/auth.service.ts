@@ -25,7 +25,7 @@ import type Redis from 'ioredis';
 import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { AuthRole } from '../roles/roles.enum';
-import { RoleRepository } from '../roles/role.repository';
+import { RoleService } from '../roles/role.service';
 import { UserService } from '../users/user.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -56,7 +56,7 @@ export class AuthService {
     private readonly userService: UserService, //có thể chuyển thành userService nếu muốn, nhưng do chỉ cần dùng đến hàm findByEmail và createUser nên sẽ không cần thiết phải gọi cả service lên
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
-    private readonly roleRepository: RoleRepository,
+    private readonly roleService: RoleService,
   ) {}
 
   //xử lý global exception
@@ -261,7 +261,7 @@ export class AuthService {
     const userRegisterDto = JSON.parse(pendingData) as AuthRegisterRequestDto;
     // lấy xong rồi thì xóa trong redis đi để tránh bị rác dữ liệu
 
-    const role = await this.roleRepository.findByName(AuthRole.USER);
+    const role = await this.roleService.findByName(AuthRole.USER);
     if (!role) {
       this.logger.error(`Role ${AuthRole.USER} not found in database`);
       throw new NotFoundException(`Role ${AuthRole.USER} not found`);

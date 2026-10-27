@@ -19,6 +19,6 @@ import { ImageBookModule } from '../image-book/image-book.module';
   ],
   controllers: [BookController],
   providers: [BookService, BookRepository],
-  exports: [BookService, BookRepository],
+  exports: [BookService],
 })
 export class BookModule {}

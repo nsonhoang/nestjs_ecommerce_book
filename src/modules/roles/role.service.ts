@@ -37,4 +37,8 @@ export class RoleService {
     }
     await this.roleRepository.deleteById(id);
   }
+
+  async findByName(name: string): Promise<RolesResponseDto | null> {
+    return await this.roleRepository.findByName(name);
+  }
 }

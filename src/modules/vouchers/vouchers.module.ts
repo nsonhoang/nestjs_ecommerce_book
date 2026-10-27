@@ -9,6 +9,6 @@ import { VouchersService } from './vouchers.service';
   imports: [PrismaModule],
   controllers: [VouchersController],
   providers: [VouchersService, VouchersRepository],
-  exports: [VouchersService, VouchersRepository],
+  exports: [VouchersService],
 })
 export class VouchersModule {}

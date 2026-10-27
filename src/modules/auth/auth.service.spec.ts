@@ -25,15 +25,15 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { REDIS } from '../redis/redis.module';
 import { UserService } from '../users/user.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { RoleRepository } from '../roles/role.repository';
+import { RoleService } from '../roles/role.service';
 
 // Important: AuthService imports modules that depend on Prisma.
 // For unit tests, mock them so Jest doesn't load the Prisma generated client.
 jest.mock('../users/user.service', () => ({
   UserService: class UserService {},
 }));
-jest.mock('../roles/role.repository', () => ({
-  RoleRepository: class RoleRepository {},
+jest.mock('../roles/role.service', () => ({
+  RoleService: class RoleService {},
 }));
 jest.mock('../notifications/notifications.service', () => ({
   NotificationsService: class NotificationsService {},
@@ -47,7 +47,7 @@ describe('AuthService (unit)', () => {
   let mailQueue: any;
   let userService: any;
   let notificationsService: any;
-  let roleRepository: any;
+  let roleService: { findByName: jest.Mock };
   let jwtService: JwtService;
 
   beforeEach(async () => {
@@ -81,7 +81,7 @@ describe('AuthService (unit)', () => {
       subscribeTokenToTopic: jest.fn(),
       removeDeviceToken: jest.fn().mockImplementation(() => Promise.resolve()),
     };
-    roleRepository = { findByName: jest.fn() };
+    roleService = { findByName: jest.fn() };
     jwtService = {
       sign: jest.fn(),
       signAsync: jest.fn(),
@@ -98,7 +98,7 @@ describe('AuthService (unit)', () => {
         { provide: UserService, useValue: userService },
         { provide: JwtService, useValue: jwtService },
         { provide: NotificationsService, useValue: notificationsService },
-        { provide: RoleRepository, useValue: roleRepository },
+        { provide: RoleService, useValue: roleService },
       ],
     }).compile();
 
@@ -432,7 +432,7 @@ describe('AuthService (unit)', () => {
       }),
     ); // user-pending:otp-token
 
-    roleRepository.findByName.mockResolvedValue({ id: 'role-1', name: 'USER' });
+    roleService.findByName.mockResolvedValue({ id: 'role-1', name: 'USER' });
     userService.createUser.mockResolvedValue({
       id: 'user-1',
       email: 'test@example.com',

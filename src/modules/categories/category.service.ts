@@ -86,6 +86,10 @@ export class CategoryService {
       await this.categoryRepository.delete(id);
     } catch (error) {
       this.logger.error('Lỗi khi xóa danh mục', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Không thể xóa danh mục');
     }
   }
   async findById(id: string): Promise<CategoryResponseDto | null> {
