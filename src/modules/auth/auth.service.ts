@@ -169,7 +169,6 @@ export class AuthService {
           user.id,
           user.email,
           user.role.name,
-          sessionId,
         ),
         expiresAt: 900000, // 15 phút
         // Tạo CSRF token và gửi về client,
@@ -336,7 +335,6 @@ export class AuthService {
         userLike.userId,
         userLike.email,
         userLike.role,
-        payload.sessionId,
       );
 
       const newRefreshToken = this.generateRefreshToken(
@@ -418,57 +416,52 @@ export class AuthService {
   async logout(
     accessToken: string,
     request: Request,
-    fcmToken?: string,
+    resOrFcmToken?: Response | string,
+    fcmTokenParam?: string,
   ): Promise<string> {
-    // cần phải thêm xóa user device
-    try {
-      // 2) Xóa refresh token trong Redis dựa trên userId lấy được từ access token
-      const payload: JwtPayload = this.verifyToken(accessToken);
-      //lấy sessionId theo deviceId để xóa refresh token, tránh trường hợp user đăng xuất trên một thiết bị nhưng lại xóa luôn refresh token của các thiết bị khác
-      const sessionId = await this.redis.get(
-        `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
-      );
+    let res: Response | undefined;
+    let fcmToken: string | undefined;
 
-      const currentSessionId = await this.redis.get(
-        `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
+    if (
+      resOrFcmToken &&
+      typeof (resOrFcmToken as Response).clearCookie === 'function'
+    ) {
+      res = resOrFcmToken as Response;
+      fcmToken = fcmTokenParam;
+    } else if (typeof resOrFcmToken === 'string') {
+      fcmToken = resOrFcmToken;
+    }
+
+    try {
+      // Xóa refresh token trong Redis dựa trên userId lấy được từ access token
+      const payload: JwtPayload = this.verifyToken(accessToken);
+      const deviceId = this.getDeviceId(request);
+
+      const sessionId = await this.redis.get(
+        `deviceSession:${payload.sub}:${deviceId}`,
       );
-      if (!currentSessionId) {
+      if (!sessionId) {
         this.logger.warn(
-          `Không tìm thấy sessionId cho người dùng ${payload.sub} trên thiết bị ${this.getDeviceId(request)} khi đăng xuất
-          có thể thiết bị đã bị thay đổi thông tin 
-          `,
+          `Không tìm thấy sessionId cho người dùng ${payload.sub} trên thiết bị ${deviceId} khi đăng xuất`,
         );
         throw new UnauthorizedException(
           'Không tìm thấy sessionId cho thiết bị, có thể thiết bị đã bị thay đổi thông tin',
         );
       }
-      if (sessionId) {
-        await this.redis.del(`refreshToken:${sessionId}`);
-      }
 
-      //phải kiểm tra xem deviceId có đúng với trong redis không trước khi xóa,
-      // để tránh xóa dữ liệu rác trên thiết bị
-      await this.redis.del(
-        `deviceSession:${payload.sub}:${this.getDeviceId(request)}`,
-      );
-      await this.redis.zrem(
-        `userDevices:${payload.sub}`,
-        this.getDeviceId(request),
-      );
+      await this.redis.del(`refreshToken:${sessionId}`);
+      await this.redis.del(`deviceSession:${payload.sub}:${deviceId}`);
+      await this.redis.zrem(`userDevices:${payload.sub}`, deviceId);
 
       this.logger.log(
-        `Đã xóa session và device cho user ${payload.sub} trên thiết bị ${this.getDeviceId(request)}`,
-      ); // Debug: log thông tin đã xóa session và device
-      // 3) Có thể thêm blacklist cho access token nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
-      const now = Math.floor(Date.now() / 1000);
-      const ttl = payload.exp - now;
-      const hashAccessToken = this.hashToken(accessToken);
-      await this.redis.set(
-        `blacklist:${hashAccessToken}`,
-        'true',
-        'EX',
-        Math.max(0, ttl),
-      ); // Blacklist access token là thời gian sống còn lại của access token, có thể lấy từ payload.exp - hiện tại
+        `Đã xóa session và device cho user ${payload.sub} trên thiết bị ${deviceId}`,
+      );
+
+      if (res) {
+        res.clearCookie('refreshToken', { path: '/v1/auth/refresh-token' });
+        res.clearCookie('csrfToken', { path: '/v1/auth/refresh-token' });
+      }
+
       if (fcmToken) {
         this.notificationsService.removeDeviceToken(fcmToken).catch((error) => {
           this.logger.error(
@@ -702,13 +695,11 @@ export class AuthService {
     userId: string,
     email: string,
     role: string,
-    sessionId: string, // có thể thêm sessionId vào payload nếu muốn, nhưng do access token có thời gian sống ngắn nên có thể không cần thiết
   ): string {
     return this.jwtService.sign({
       sub: userId,
       email: email,
       role: role,
-      sessionId: sessionId,
     });
   }
 

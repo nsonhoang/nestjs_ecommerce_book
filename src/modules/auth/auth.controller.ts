@@ -133,14 +133,15 @@ export class AuthController {
   })
   async logout(
     @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
     @Body() logoutDto: LogoutRequestDto,
   ): Promise<ApiResponse<string>> {
-    // Controller sạch bóng logic bóc tách chuỗi, đẩy hết trách nhiệm hạ tầng/nghiệp vụ xuống Service
     const authHeader = req.headers['authorization'] || '';
 
     const result = await this.authService.logout(
       authHeader,
       req,
+      res,
       logoutDto.fcmToken,
     );
 

@@ -335,7 +335,7 @@ describe('AuthService (unit)', () => {
     });
   });
 
-  it('logout: xóa session + zrem device + blacklist access token', async () => {
+  it('logout: xóa session + zrem device', async () => {
     const accessToken = 'access-token';
     const deviceId = 'device-1';
     const sessionId = 'session-1';
@@ -369,19 +369,11 @@ describe('AuthService (unit)', () => {
       ),
     ).resolves.toBe('đăng xuất thành công');
 
-    expect(redis.get).toHaveBeenNthCalledWith(
-      1,
-      `deviceSession:user-1:${deviceId}`,
-    );
-    expect(redis.get).toHaveBeenNthCalledWith(
-      2,
-      `deviceSession:user-1:${deviceId}`,
-    );
+    expect(redis.get).toHaveBeenCalledWith(`deviceSession:user-1:${deviceId}`);
     expect(redis.del).toHaveBeenCalledWith(`refreshToken:${sessionId}`);
     expect(redis.del).toHaveBeenCalledWith(`deviceSession:user-1:${deviceId}`);
     expect(redis.zrem).toHaveBeenCalledWith(`userDevices:user-1`, deviceId);
 
-    expect(redis.set).toHaveBeenCalledWith('blacklist:hash', 'true', 'EX', 120);
 
     expect(notificationsService.removeDeviceToken).toHaveBeenCalledWith(
       fcmToken,
