@@ -24,13 +24,43 @@ async function bootstrap() {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('E-Commerce API')
-    .setDescription('API documentation for the NestJS e-commerce service')
-    .setVersion('1.0')
+    .setTitle('E-Commerce Book API')
+    .setDescription(
+      'Tài liệu API chính thức cho hệ thống backend E-Commerce Book (NestJS 11, Prisma, MySQL 8.4, Redis, BullMQ).\n\n' +
+        '### Các phân hệ chính:\n' +
+        '- **Auth & Users**: Xác thực JWT (Stateless), Refresh Token, phiên thiết bị trên Redis, phân quyền RBAC.\n' +
+        '- **Catalog**: Quản lý Sách (Book), Tác giả (Author), Thể loại (Category), Album ảnh (ImageBook).\n' +
+        '- **Sales & Marketing**: Giỏ hàng (Carts), Khuyến mãi (Promotion), Mã giảm giá (Vouchers).\n' +
+        '- **Orders & Logistics**: Quy trình đặt hàng, tích hợp đơn vị vận chuyển Giao Hàng Nhanh (GHN), Quản lý vận đơn (Shipments).\n' +
+        '- **Inventory & Reviews**: Quản lý tồn kho & ghi vết xuất nhập (InventoryLog), Đánh giá & nhận xét sách (Reviews).',
+    )
+    .setVersion('1.0.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Nhập JWT Access Token (Bearer <token>)',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
     .addBearerAuth()
     .build();
+
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api-docs', app, swaggerDocument);
+  SwaggerModule.setup('api-docs', app, swaggerDocument, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      docExpansion: 'none',
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+    customSiteTitle: 'E-Commerce Book API Docs',
+  });
 
   await app.listen(3000);
 }

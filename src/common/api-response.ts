@@ -1,4 +1,5 @@
-import { HttpCode, HttpStatus } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export interface IApiResponse<T> {
   success: boolean; // thành công hay không
@@ -10,14 +11,48 @@ export interface IApiResponse<T> {
 }
 
 export class ApiResponse<T> implements IApiResponse<T> {
+  @ApiProperty({
+    example: true,
+    description: 'Trạng thái thành công của request',
+  })
+  public success: boolean;
+
+  @ApiPropertyOptional({
+    example: 'Thao tác thành công',
+    description: 'Thông báo kết quả',
+  })
+  public message?: string;
+
+  @ApiPropertyOptional({ description: 'Dữ liệu trả về' })
+  public data?: T;
+
+  @ApiProperty({ example: 200, description: 'Mã HTTP status code' })
+  public code: number;
+
+  @ApiPropertyOptional({ description: 'Chi tiết lỗi nếu thất bại' })
+  public errors?: unknown;
+
+  @ApiProperty({
+    example: '2026-10-27T10:00:00.000Z',
+    description: 'Thời gian phản hồi',
+  })
+  public timestamp: Date;
+
   constructor(
-    public success: boolean,
-    public message?: string,
-    public data?: T,
-    public code: number = HttpStatus.OK,
-    public errors?: unknown,
-    public timestamp: Date = new Date(),
-  ) {}
+    success: boolean,
+    message?: string,
+    data?: T,
+    code: number = HttpStatus.OK,
+    errors?: unknown,
+    timestamp: Date = new Date(),
+  ) {
+    this.success = success;
+    this.message = message;
+    this.data = data;
+    this.code = code;
+    this.errors = errors;
+    this.timestamp = timestamp;
+  }
   static ok<T>(
     data: T,
     message?: string,
