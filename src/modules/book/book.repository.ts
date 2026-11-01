@@ -8,7 +8,12 @@ import {
 } from './dto/book.response.dto';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 
-import { buildMeta, getPagination } from 'src/utils/pagination.util';
+import {
+  buildCursorMeta,
+  buildMeta,
+  getPagination,
+  paginateCursorItems,
+} from 'src/utils/pagination.util';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { Prisma } from 'generated/prisma/client';
 import { PaginateBookDto } from './dto/paginate-book.dto';
@@ -122,48 +127,105 @@ export class BookRepository {
         [safeSortBy]: sortOrder,
       } as Record<string, 'asc' | 'desc'>;
 
-      const [data, total] = await Promise.all([
-        this.prisma.book.findMany({
-          where: matching,
-          skip,
-          take,
-          orderBy,
-          include: {
-            images: true,
-            categories: { include: { category: true } },
-            authors: { include: { author: true } },
-            promotions: {
-              where: {
-                promotion: {
-                  isActive: true,
-                  startDate: { lte: currentDate },
-                  endDate: { gte: currentDate },
-                },
-              },
-              include: { promotion: true },
+      const bookIncludes = {
+        images: true,
+        categories: { include: { category: true } },
+        authors: { include: { author: true } },
+        promotions: {
+          where: {
+            promotion: {
+              isActive: true,
+              startDate: { lte: currentDate },
+              endDate: { gte: currentDate },
             },
           },
+          include: { promotion: true },
+        },
+      } as const;
+
+      type BookWithRelations = Prisma.BookGetPayload<{
+        include: typeof bookIncludes;
+      }>;
+
+      const mapBookDto = (b: BookWithRelations): BookDetailResponseDto => ({
+        ...b,
+        categories: b.categories.map((bc) => bc.category),
+        authors: b.authors.map((item) => item.author),
+        promotions: b.promotions.map((bp) => ({
+          id: bp.promotion.id,
+          name: bp.promotion.name,
+          discountRate: bp.promotion.discountRate,
+          isActive: bp.promotion.isActive,
+          startDate: bp.promotion.startDate,
+          endDate: bp.promotion.endDate,
+        })),
+        images: b.images,
+        price: b.price,
+      });
+
+      // =====================================================================
+      // 1. NHÁNH CURSOR PAGINATION (Phương pháp 1: O(1) qua UUIDv7)
+      // =====================================================================
+      if (query.cursor) {
+        const rawBooks = await this.prisma.book.findMany({
+          where: matching,
+          take: safeLimit + 1,
+          skip: 1,
+          cursor: { id: query.cursor },
+          orderBy: { id: 'desc' },
+          include: bookIncludes,
+        });
+
+        const { data, hasNextPage, nextCursor } = paginateCursorItems(
+          rawBooks,
+          safeLimit,
+        );
+
+        return {
+          data: data.map(mapBookDto),
+          meta: buildCursorMeta(safeLimit, hasNextPage, nextCursor),
+        };
+      }
+
+      // =====================================================================
+      // 2. NHÁNH DEFERRED JOIN (Phương pháp 2: Two-Step Covering Index Scan)
+      // =====================================================================
+      // Bước 2.1: Quét nhanh trên Index chỉ để lấy danh sách ID
+      const targetIds = await this.prisma.book.findMany({
+        where: matching,
+        select: { id: true },
+        skip,
+        take: safeLimit,
+        orderBy,
+      });
+
+      if (targetIds.length === 0) {
+        const total = await this.prisma.book.count({ where: matching });
+        return {
+          data: [],
+          meta: buildMeta(safePage, safeLimit, total, null, false),
+        };
+      }
+
+      // Bước 2.2: Chỉ đọc dữ liệu đầy đủ (kèm relations nặng) cho đúng danh sách ID ở Bước 2.1
+      const [data, total] = await Promise.all([
+        this.prisma.book.findMany({
+          where: {
+            id: { in: targetIds.map((item) => item.id) },
+          },
+          orderBy,
+          include: bookIncludes,
         }),
         this.prisma.book.count({ where: matching }),
       ]);
 
+      const mappedData = data.map(mapBookDto);
+      const nextCursor =
+        mappedData.length > 0 ? mappedData[mappedData.length - 1].id : null;
+
       return {
-        data: data.map((b) => ({
-          ...b,
-          categories: b.categories.map((bc) => bc.category),
-          authors: b.authors.map((item) => item.author),
-          promotions: b.promotions.map((bp) => ({
-            id: bp.promotion.id,
-            name: bp.promotion.name,
-            discountRate: bp.promotion.discountRate,
-            isActive: bp.promotion.isActive,
-            startDate: bp.promotion.startDate,
-            endDate: bp.promotion.endDate,
-          })),
-          images: b.images,
-          price: b.price,
-        })),
-        meta: buildMeta(safePage, safeLimit, total),
+        data: mappedData,
+        meta: buildMeta(safePage, safeLimit, total, nextCursor),
       };
     } catch (error) {
       console.error('Error fetching books:', error);

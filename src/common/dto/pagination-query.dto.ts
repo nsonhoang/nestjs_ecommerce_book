@@ -5,16 +5,24 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PaginationQueryDto {
   @ApiPropertyOptional({
-    example: 1,
-    default: 1,
-    description: 'Số trang hiện tại',
+    example: '0192e4a9-86d4-71aa-b685-bb9a6d616326',
+    description:
+      'Con trỏ trang trước (nếu dùng chế độ cuộn vô tận Cursor Pagination). Bỏ qua nếu dùng phân trang số.',
   })
   @IsOptional()
-  @Transform(({ value }) => Number(value))
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    default: 1,
+    description: 'Số trang hiện tại (nếu dùng chế độ phân trang theo số trang)',
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined && value !== null ? Number(value) : 1))
   @IsInt()
   @Min(1)
   page = 1;
-
   @ApiPropertyOptional({
     example: 10,
     default: 10,
