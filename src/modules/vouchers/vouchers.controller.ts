@@ -13,11 +13,10 @@ import {
 import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateVouchersDto } from 'src/modules/vouchers/dto/pagination-vouchers.dto';
 import { VouchersRequestDto } from 'src/modules/vouchers/dto/vouchers.request.dto';
@@ -44,8 +43,8 @@ export class VouchersController {
   @ApiBody({ type: VouchersRequestDto })
   @ApiOkResponse({ description: 'Tạo voucher thành công' })
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.VOUCHER_CREATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createVoucher(
     @Body() data: VouchersRequestDto,
@@ -84,8 +83,8 @@ export class VouchersController {
   @ApiBody({ type: VouchersUpdateRequestDto })
   @ApiOkResponse({ description: 'Cập nhật voucher thành công' })
   @Patch('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.VOUCHER_UPDATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateVoucher(
     @Param('id', ParseUUIDPipe) id: string,
@@ -100,8 +99,8 @@ export class VouchersController {
   @ApiParam({ name: 'id', description: 'Voucher id' })
   @ApiOkResponse({ description: 'Xóa voucher thành công' })
   @Delete('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.VOUCHER_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteVoucher(
     @Param('id', ParseUUIDPipe) id: string,

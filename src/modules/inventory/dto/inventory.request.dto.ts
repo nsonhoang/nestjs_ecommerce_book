@@ -10,7 +10,7 @@ import { InventoryLogType } from 'generated/prisma/client';
 
 class InventoryRequestDto {
   @IsNotEmpty({ message: 'ID sách không được để trống' })
-  @IsUUID('4', { message: 'ID sách không đúng định dạng' })
+  @IsUUID('all', { message: 'ID sách không đúng định dạng' })
   bookId!: string;
 
   //không cần quantity khi tạo mới kho vì mặc định sẽ là 0 và phải có bước nhập kho để cập nhật số lượng sau

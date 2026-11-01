@@ -8,10 +8,10 @@ import {
   ProvinceResponse,
   WardResponse,
 } from 'src/modules/ghn/dto/ghn.response.dto';
+import { SYSTEM_PERMISSIONS } from 'src/modules/permissions/permissions.enum';
 import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from 'generated/prisma/client';
-
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,
   user: process.env.DATABASE_USER,
@@ -28,50 +28,111 @@ const GHN_BASE_URL =
   'https://dev-online-gateway.ghn.vn/shiip/public-api';
 
 async function main() {
-  console.log('--- Đang lấy dữ liệu Tỉnh/Thành từ GHN... ---');
+  console.log('--- 1. Đồng bộ danh mục Permissions hệ thống ---');
+  await seedPermissionsAndRoles();
+
+  console.log('--- 2. Lấy dữ liệu Tỉnh/Thành từ GHN... ---');
+  try {
+    await seedProvinces();
+  } catch (error) {
+    console.warn('Bỏ qua seed GHN do không có cấu hình mạng hoặc token GHN:', (error as Error).message);
+  }
+}
+
+async function seedPermissionsAndRoles() {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
 
-  await seedProvinces();
+  // 1. Upsert toàn bộ permissions
+  console.log(`Đang nạp ${SYSTEM_PERMISSIONS.length} permissions...`);
+  for (const perm of SYSTEM_PERMISSIONS) {
+    await prisma.permission.upsert({
+      where: { name: perm.name },
+      update: {
+        description: perm.description,
+        module: perm.module,
+      },
+      create: {
+        name: perm.name,
+        description: perm.description,
+        module: perm.module,
+      },
+    });
+  }
+  console.log(`✅ Đã nạp thành công ${SYSTEM_PERMISSIONS.length} permissions.`);
 
-  const existing = await prisma.user.findUnique({
+  // 2. Tạo các Role mặc định
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'SUPER_ADMIN' },
+    update: {},
+    create: { name: 'SUPER_ADMIN' },
+  });
+
+  await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: { name: 'ADMIN' },
+  });
+
+  await prisma.role.upsert({
+    where: { name: 'STAFF' },
+    update: {},
+    create: { name: 'STAFF' },
+  });
+
+  await prisma.role.upsert({
+    where: { name: 'USER' },
+    update: {},
+    create: { name: 'USER' },
+  });
+
+  // 3. Gán FULL quyền cho SUPER_ADMIN và ADMIN
+  const allDbPermissions = await prisma.permission.findMany({ select: { id: true } });
+  const targetRoleIds = [superAdminRole.id];
+
+  const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+  if (adminRole) {
+    targetRoleIds.push(adminRole.id);
+  }
+
+  for (const roleId of targetRoleIds) {
+    await prisma.rolePermission.deleteMany({
+      where: { roleId },
+    });
+    await prisma.rolePermission.createMany({
+      data: allDbPermissions.map((p) => ({
+        roleId,
+        permissionId: p.id,
+      })),
+    });
+  }
+  console.log(`✅ Đã gán FULL ${allDbPermissions.length} quyền cho SUPER_ADMIN và ADMIN.`);
+
+  // 4. Tạo hoặc cập nhật tài khoản Super Admin
+  const hash = await bcrypt.hash(adminPassword, 10);
+  const existingUser = await prisma.user.findUnique({
     where: { email: adminEmail },
   });
 
-  if (existing) {
-    console.log('Admin already exists');
-    return;
+  if (existingUser) {
+    await prisma.user.update({
+      where: { email: adminEmail },
+      data: {
+        roleId: superAdminRole.id,
+      },
+    });
+    console.log(`✅ Đã cập nhật tài khoản Admin ${adminEmail} sang role SUPER_ADMIN (Full quyền).`);
+  } else {
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        password: hash,
+        name: 'System Super Administrator',
+        roleId: superAdminRole.id,
+      },
+    });
+    console.log(`✅ Đã tạo mới tài khoản Super Admin ${adminEmail} (Full quyền).`);
   }
-
-  let adminRole = await prisma.role.findUnique({
-    where: { name: 'ADMIN' },
-  });
-
-  if (!adminRole) {
-    adminRole = await prisma.role.create({
-      data: { name: 'ADMIN' },
-    });
-    await prisma.role.create({
-      data: { name: 'USER' },
-    });
-    await prisma.role.create({
-      data: { name: 'STAFF' },
-    });
-    console.log('Admin, User, and Staff roles created');
-  }
-
-  const hash = await bcrypt.hash(adminPassword, 10);
-
-  await prisma.user.create({
-    data: {
-      email: adminEmail,
-      password: hash,
-      name: 'System Administrator',
-      roleId: adminRole.id,
-    },
-  });
-
-  console.log('Admin user created');
 }
 
 async function seedProvinces() {

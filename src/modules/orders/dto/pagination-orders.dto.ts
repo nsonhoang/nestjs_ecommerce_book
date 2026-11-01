@@ -13,7 +13,7 @@ import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 
 export class PaginateOrderDto extends PaginationQueryDto {
   @IsOptional()
-  @IsUUID('4', { message: 'ID người dùng không hợp lệ' })
+  @IsUUID('all', { message: 'ID người dùng không hợp lệ' })
   userId?: string;
 
   // Lọc theo ngày tạo

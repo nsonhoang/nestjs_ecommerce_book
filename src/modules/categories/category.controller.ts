@@ -12,10 +12,10 @@ import { minutes, Throttle } from '@nestjs/throttler';
 
 import { ApiResponse } from 'src/common/api-response';
 import { CategoryService } from './category.service';
-import { AuthRole } from '../roles/roles.enum';
-import { Roles } from 'src/common/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import { CategoryRequestDto } from './dto/categories.request.dto';
 import { CategoryResponseDto } from './dto/categories.response.dto';
 import {
@@ -37,8 +37,8 @@ export class CategoryController {
   @ApiBody({ type: CategoryRequestDto })
   @ApiOkResponse({ description: 'Tạo danh mục thành công' })
   @Post('')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.CATEGORY_CREATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createCategory(
     @Body() categoryDto: CategoryRequestDto,
@@ -55,8 +55,8 @@ export class CategoryController {
   @ApiBody({ type: CategoryRequestDto })
   @ApiOkResponse({ description: 'Cập nhật danh mục thành công' })
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.CATEGORY_UPDATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateCategory(
     @Param('id') id: string,
@@ -96,8 +96,8 @@ export class CategoryController {
   @ApiParam({ name: 'id', description: 'Category id' })
   @ApiOkResponse({ description: 'Xóa danh mục thành công' })
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.CATEGORY_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteCategory(@Param('id') id: string): Promise<ApiResponse<void>> {
     const result = await this.categoryService.deleteCategory(id);

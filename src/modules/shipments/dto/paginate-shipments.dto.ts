@@ -9,7 +9,7 @@ import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 
 export class PaginateShipmentsDto extends PaginationQueryDto {
   @IsOptional()
-  @IsUUID('4', { message: 'orderId không hợp lệ' })
+  @IsUUID('all', { message: 'orderId không hợp lệ' })
   orderId?: string;
 
   @IsOptional()

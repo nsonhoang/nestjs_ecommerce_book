@@ -27,6 +27,6 @@ export class PromotionRequestDto {
 
   // Nhận vào một mảng ID sách để áp dụng khuyến mãi
   @IsArray()
-  @IsUUID('4', { each: true, message: 'ID sách không hợp lệ' })
+  @IsUUID('all', { each: true, message: 'ID sách không hợp lệ' })
   bookIds!: string[];
 }

@@ -16,7 +16,7 @@ import { OrdersModule } from './orders/orders.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReviewModule } from './review/review.module';
-
+import { PermissionsModule } from './permissions/permissions.module';
 @Module({
   imports: [
     UserModule,
@@ -35,6 +35,7 @@ import { ReviewModule } from './review/review.module';
     VouchersModule,
     ShipmentsModule,
     ReviewModule,
+    PermissionsModule,
   ],
   exports: [
     UserModule,
@@ -51,6 +52,7 @@ import { ReviewModule } from './review/review.module';
     VouchersModule,
     ShipmentsModule,
     ReviewModule,
+    PermissionsModule,
   ],
 })
 export class FeatureModulesModule {}

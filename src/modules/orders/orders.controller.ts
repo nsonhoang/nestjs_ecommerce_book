@@ -22,9 +22,9 @@ import { OrdersService } from './orders.service';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { UpdateOrderStatusRequestDto } from './dto/update-order-status.request.dto';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -58,8 +58,8 @@ export class OrdersController {
   }
 
   @Get() //lấy tất cả đơn hàng, cái này phải filter
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.ORDER_READ)
   @ApiOperation({ summary: 'Lấy danh sách đơn hàng (admin/staff)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -110,8 +110,8 @@ export class OrdersController {
   //còn 1 hàm là update status nữa
   // cập nhật đơn hàng xong sẽ bắn notification cho khách hàng, cái này sẽ được gọi bởi admin khi xác nhận đơn hàng, hoặc khi giao hàng
   @Patch('/:id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.ORDER_UPDATE_STATUS)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   @ApiOperation({ summary: 'Cập nhật trạng thái đơn hàng (admin/staff)' })
   @ApiParam({ name: 'id', description: 'Order id' })
@@ -129,8 +129,8 @@ export class OrdersController {
   }
 
   @Patch('/:id/cancel')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.ORDER_CANCEL)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   @ApiOperation({ summary: 'Hủy đơn hàng (admin/staff)' })
   @ApiParam({ name: 'id', description: 'Order id' })

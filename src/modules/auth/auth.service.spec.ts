@@ -26,7 +26,7 @@ import { REDIS } from '../redis/redis.module';
 import { UserService } from '../users/user.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RoleService } from '../roles/role.service';
-
+import { PermissionsService } from '../permissions/permissions.service';
 // Important: AuthService imports modules that depend on Prisma.
 // For unit tests, mock them so Jest doesn't load the Prisma generated client.
 jest.mock('../users/user.service', () => ({
@@ -38,7 +38,9 @@ jest.mock('../roles/role.service', () => ({
 jest.mock('../notifications/notifications.service', () => ({
   NotificationsService: class NotificationsService {},
 }));
-
+jest.mock('../permissions/permissions.service', () => ({
+  PermissionsService: class PermissionsService {},
+}));
 describe('AuthService (unit)', () => {
   let service: AuthService;
   let moduleRef: TestingModule;
@@ -48,6 +50,7 @@ describe('AuthService (unit)', () => {
   let userService: any;
   let notificationsService: any;
   let roleService: { findByName: jest.Mock };
+  let permissionsService: { getPermissionsByRoleId: jest.Mock };
   let jwtService: JwtService;
 
   beforeEach(async () => {
@@ -82,6 +85,9 @@ describe('AuthService (unit)', () => {
       removeDeviceToken: jest.fn().mockImplementation(() => Promise.resolve()),
     };
     roleService = { findByName: jest.fn() };
+    permissionsService = {
+      getPermissionsByRoleId: jest.fn().mockResolvedValue(['inventory:view']),
+    };
     jwtService = {
       sign: jest.fn(),
       signAsync: jest.fn(),
@@ -99,6 +105,7 @@ describe('AuthService (unit)', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: RoleService, useValue: roleService },
+        { provide: PermissionsService, useValue: permissionsService },
       ],
     }).compile();
 
@@ -227,6 +234,7 @@ describe('AuthService (unit)', () => {
       expiresAt: 900000,
       csrfToken: 'csrf-token',
       tokenType: 'Bearer',
+      permissions: ['inventory:view'],
     });
   });
 

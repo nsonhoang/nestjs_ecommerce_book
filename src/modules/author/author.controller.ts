@@ -16,9 +16,9 @@ import { AuthorRequestDto } from './dto/author.request.dto';
 import { AuthorResponseDto } from './dto/author.response.dto';
 import { AuthorUpdateRequestDto } from './dto/author-update.request.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -55,8 +55,8 @@ export class AuthorController {
   @ApiBody({ type: AuthorRequestDto })
   @ApiOkResponse({ description: 'Tạo tác giả thành công' })
   @Post('')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.AUTHOR_CREATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createAuthor(
     @Body() authorDto: AuthorRequestDto,
@@ -70,8 +70,8 @@ export class AuthorController {
   @ApiParam({ name: 'id', description: 'Author id' })
   @ApiOkResponse({ description: 'Xóa tác giả thành công' })
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.AUTHOR_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteAuthor(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     await this.authorService.deleteAuthor(id);
@@ -84,8 +84,8 @@ export class AuthorController {
   @ApiBody({ type: AuthorUpdateRequestDto })
   @ApiOkResponse({ description: 'Cập nhật tác giả thành công' })
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.AUTHOR_UPDATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateAuthor(
     @Param('id') id: string,

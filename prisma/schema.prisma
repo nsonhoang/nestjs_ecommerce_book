@@ -16,7 +16,7 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid(7))
   email     String   @unique
   password  String
   name      String
@@ -38,10 +38,37 @@ model User {
 
 
 model Role {
-  id   String @id @default(uuid())
+  id   String @id @default(uuid(7))
   name String @unique
 
-  users User[]
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid(7))
+  name        String   @unique
+  description String?
+  module      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@index([roleId])
 }
 
 enum UserStatus {
@@ -50,7 +77,7 @@ enum UserStatus {
 }
 
 model Category {
-  id    String @id @default(uuid())
+  id    String @id @default(uuid(7))
   name  String @unique
 
   books BookCategory[]
@@ -63,7 +90,7 @@ enum BookStatus {
 }
 
 model Book {
-  id            String   @id @default(uuid())
+  id            String   @id @default(uuid(7))
   title         String //tên quyển sách
   description   String?  @db.Text
   thumbnail     String
@@ -102,14 +129,14 @@ model BookCategory {
 
 }
 model BookImage {
-  id      String @id @default(uuid())
+  id      String @id @default(uuid(7))
   publicId  String @unique
   url     String
   bookId  String
   book    Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
 }
 model Author {
-  id    String @id @default(uuid())
+  id    String @id @default(uuid(7))
   name  String 
   dateOfBirth DateTime?
   info String? @db.Text
@@ -133,7 +160,7 @@ model BookAuthor {
 }
 
 model Address {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   userId      String
 
   fullName    String
@@ -167,7 +194,7 @@ model Address {
 //15/4
 
 model Inventory {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid(7))
   bookId    String   
   // location  String   // Tên kho (Vd: Kho Quận 1, Kho Quận 7, Kho Long An) bỏ location đi sau có thể update thêm warehouseId để quản lý nhiều kho
 
@@ -186,7 +213,7 @@ model Inventory {
 }
 
 model InventoryLog {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   inventoryId String
   inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
 
@@ -212,7 +239,7 @@ enum InventoryLogType {
 
 // 15/4
 model Cart {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid(7))
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -223,7 +250,7 @@ model Cart {
 }
 
 model CartItem {
-  id       String @id @default(uuid())
+  id       String @id @default(uuid(7))
   cartId   String
   bookId   String
 
@@ -241,7 +268,7 @@ model CartItem {
 }
 
 model Promotion {
-  id           String   @id @default(uuid())
+  id           String   @id @default(uuid(7))
   name         String   // Tên chương trình (VD: "Flash Sale 30/4")
   discountRate Int      // Giảm bao nhiêu % (VD: 20)
   startDate    DateTime
@@ -295,7 +322,7 @@ enum OrderPaymentMethod {
 }
 
 model Order {
-  id               String            @id @default(uuid())
+  id               String            @id @default(uuid(7))
   code             String            @unique
   userId           String
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -330,7 +357,7 @@ model Order {
 }
 
 model OrderItem {
-  id             String   @id @default(uuid())
+  id             String   @id @default(uuid(7))
   orderId        String
   bookId         String
   bookTitle      String
@@ -350,7 +377,7 @@ model OrderItem {
 }
 
 model Voucher {
-  id              String   @id @default(uuid())
+  id              String   @id @default(uuid(7))
   code            String   @unique // Ví dụ: Giamgia50k, CHAOHE2026
   description     String?
   
@@ -404,7 +431,7 @@ model District {
 }
 
 model Shipment { // cái này tương tác trực tiếp với GHN để quản lý đơn hàng vận chuyển, có thể mở rộng thêm để hỗ trợ nhiều đối tác vận chuyển khác trong tương lai
-  id              String   @id @default(uuid())
+  id              String   @id @default(uuid(7))
   orderId         String   @unique // Một đơn hàng thường đi kèm 1 thông tin vận chuyển
   order           Order    @relation(fields: [orderId], references: [id])
   
@@ -429,7 +456,7 @@ model Shipment { // cái này tương tác trực tiếp với GHN để quản 
 }
 
 model DeviceToken { // cái này để lưu FCM Token của thiết bị người dùng, phục vụ cho việc gửi thông báo đẩy (Push Notification) khi có cập nhật đơn hàng, chương trình khuyến mãi, v.v.
-  id        String      @id @default(cuid())
+  id        String      @id @default(uuid(7))
   token     String   @unique // Mã FCM Token dài ngoằng lưu ở đây
   deviceOs  String?  // (Tùy chọn) Lưu xem đây là 'ios', 'android' hay 'web'
 
@@ -441,7 +468,7 @@ model DeviceToken { // cái này để lưu FCM Token của thiết bị ngườ
 }
 
 model Review {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid(7))
   userId    String
   bookId    String
   rating    Int

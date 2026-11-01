@@ -24,9 +24,9 @@ import {
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import PaginateInventoryLogsDto from './dto/paginate-inventory-logs.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { AuthRole } from '../roles/roles.enum';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import { type RequestWithUser } from '../users/user.controller';
 import {
   ApiBearerAuth,
@@ -51,8 +51,8 @@ export class InventoryController {
   @ApiBody({ type: InventoryRequestDto })
   @ApiOkResponse({ description: 'Tạo inventory thành công' })
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.INVENTORY_ADJUST)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async create(
     @Body() createInventoryDto: InventoryRequestDto,
@@ -69,8 +69,8 @@ export class InventoryController {
   @ApiBody({ type: InventoryLogRequestDto })
   @ApiOkResponse({ description: 'Tạo inventory log thành công' })
   @Post('/logs')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.INVENTORY_ADJUST)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createInventoryLog(
     @Body() inventoryLogDto: InventoryLogRequestDto,
@@ -89,8 +89,8 @@ export class InventoryController {
   @ApiOperation({ summary: 'Lấy danh sách inventory (admin/staff)' })
   @ApiOkResponse({ description: 'Lấy danh sách inventory thành công' })
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.INVENTORY_VIEW)
   async findAll(): Promise<ApiResponse<InventoryResponseDto[]>> {
     const inventory = await this.inventoryService.findAll();
     return ApiResponse.ok<InventoryResponseDto[]>(
@@ -103,8 +103,8 @@ export class InventoryController {
   @ApiOperation({ summary: 'Lấy danh sách inventory log' })
   @ApiOkResponse({ description: 'Lấy danh sách inventory log thành công' })
   @Get('/logs')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.INVENTORY_VIEW_LOGS)
   async findAllLogs(
     @Query() query: PaginateInventoryLogsDto,
   ): Promise<ApiResponse<PaginatedResult<InventoryLogResponseDto>>> {
@@ -116,8 +116,8 @@ export class InventoryController {
   @ApiParam({ name: 'id', description: 'Inventory id' })
   @ApiOkResponse({ description: 'Lấy inventory thành công' })
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.INVENTORY_VIEW)
   async findOne(
     @Param('id') id: string,
   ): Promise<ApiResponse<InventoryResponseDto | null>> {
@@ -145,8 +145,8 @@ export class InventoryController {
   // }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.INVENTORY_ADJUST)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   @ApiOperation({ summary: 'Xóa inventory (admin/staff)' })
   @ApiParam({ name: 'id', description: 'Inventory id' })

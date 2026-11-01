@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { UserRepository } from './user.repository';
+import { PermissionsService } from '../permissions/permissions.service';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserQueryDto } from './dto/user-query.dto';
@@ -21,7 +22,10 @@ const SULT_ROUNDS = 10;
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly permissionsService: PermissionsService,
+  ) {}
 
   //xử lý global exception
   // format response
@@ -47,7 +51,15 @@ export class UserService {
       if (!user) {
         throw new NotFoundException('User not found');
       }
-      return user;
+
+      const permissions = await this.permissionsService.getPermissionsByRoleId(
+        user.role.id,
+      );
+
+      return {
+        ...user,
+        permissions,
+      };
     } catch (error) {
       this.logger.error('Failed to fetch user profile', error);
       if (error instanceof HttpException) {

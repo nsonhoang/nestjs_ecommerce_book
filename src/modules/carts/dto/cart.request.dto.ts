@@ -43,7 +43,7 @@ export class DeleteCartItemRequestDto {
   // @Transform(({ value }: { value: unknown }) => parseStringArray(value))
   @IsNotEmpty()
   @IsArray()
-  @IsUUID('4', { each: true, message: 'Mỗi ID phải là một UUID hợp lệ' })
+  @IsUUID('all', { each: true, message: 'Mỗi ID phải là một UUID hợp lệ' })
   @ApiProperty({ example: ['cart-item-id'] })
   cartItemid!: string[];
 }

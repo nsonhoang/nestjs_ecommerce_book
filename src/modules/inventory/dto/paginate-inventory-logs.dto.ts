@@ -14,7 +14,7 @@ export class PaginateInventoryLogsDto {
   limit?: number = 10;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   inventoryId?: string;
 
   @IsOptional()

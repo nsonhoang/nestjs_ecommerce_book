@@ -43,4 +43,37 @@ export class RoleRepository {
       },
     });
   }
+
+  async assignPermissions(
+    roleId: string,
+    permissionIds: string[],
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({
+        where: { roleId },
+      });
+
+      if (permissionIds.length > 0) {
+        await tx.rolePermission.createMany({
+          data: permissionIds.map((permissionId) => ({
+            roleId,
+            permissionId,
+          })),
+        });
+      }
+    });
+  }
+
+  async getRolePermissions(roleId: string): Promise<string[]> {
+    const rolePermissions = await this.prisma.rolePermission.findMany({
+      where: { roleId },
+      include: {
+        permission: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return rolePermissions.map((rp) => rp.permission.name);
+  }
 }

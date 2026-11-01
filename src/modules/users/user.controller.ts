@@ -17,9 +17,9 @@ import { type JwtUser } from 'src/strategies/jwt-payload.interface';
 
 import { ApiResponse } from 'src/common/api-response';
 import { UserResponseDto } from './dto/user-response.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
-import { RolesGuard } from 'src/common/guards/roles.guard';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import { UserQueryDto } from './dto/user-query.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import {
@@ -81,8 +81,8 @@ export class UserController {
   @ApiQuery({ name: 'sortOrder', required: false })
   @ApiOkResponse({ description: 'Lấy danh sách user thành công' })
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.USER_READ)
   @Throttle({ default: { ttl: minutes(1), limit: 30 } })
   async getAllUsers(
     @Query() query: UserQueryDto,
@@ -95,8 +95,8 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'User id' })
   @ApiOkResponse({ description: 'Lấy user thành công' })
   @Get('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.USER_READ)
   @Throttle({ default: { ttl: minutes(1), limit: 60 } })
   async getUserById(
     @Param('id') id: string,
@@ -110,8 +110,8 @@ export class UserController {
   @ApiBody({ type: UserUpdateRequestDto })
   @ApiOkResponse({ description: 'Cập nhật user thành công' })
   @Patch('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.USER_UPDATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updateUserByAdmin(
     @Param('id') id: string,

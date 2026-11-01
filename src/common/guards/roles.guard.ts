@@ -29,6 +29,11 @@ export class RolesGuard implements CanActivate {
     const user = req.user;
     if (!user) throw new UnauthorizedException('Chưa đăng nhập');
 
+    // Super Admin có toàn quyền truy cập mọi API được bảo vệ bởi RolesGuard
+    if (user.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
     if (!requiredRoles.includes(user.role)) {
       throw new ForbiddenException('Bạn không có quyền truy cập API này');
     }

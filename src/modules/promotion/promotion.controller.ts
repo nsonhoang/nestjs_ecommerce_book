@@ -20,9 +20,9 @@ import { PromotionUpdateRequestDto } from './dto/promotion-update.request.dto';
 import { PaginatePromotionDto } from './dto/pagination-promotion.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import { PromotionNotifyRequestDto } from './dto/promotion-notify.request.dto';
 import {
   ApiBearerAuth,
@@ -44,8 +44,8 @@ export class PromotionController {
   @ApiBody({ type: PromotionRequestDto })
   @ApiOkResponse({ description: 'Tạo khuyến mãi thành công' })
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.PROMOTION_CREATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async createPromotion(
     @Body() promotionData: PromotionRequestDto,
@@ -66,8 +66,8 @@ export class PromotionController {
   @ApiBody({ type: PromotionNotifyRequestDto })
   @ApiOkResponse({ description: 'Gửi thông báo khuyến mãi thành công' })
   @Post('/:id/notify')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.PROMOTION_NOTIFY)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async notifyUsersAboutPromotion(
     @Param('id', ParseUUIDPipe) id: string,
@@ -116,8 +116,8 @@ export class PromotionController {
   @ApiBody({ type: PromotionUpdateRequestDto })
   @ApiOkResponse({ description: 'Cập nhật khuyến mãi thành công' })
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.PROMOTION_UPDATE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async updatePromotion(
     @Param('id', ParseUUIDPipe) id: string,
@@ -154,8 +154,8 @@ export class PromotionController {
   @ApiParam({ name: 'id', description: 'Promotion id' })
   @ApiOkResponse({ description: 'Xóa khuyến mãi thành công' })
   @Delete('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.PROMOTION_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deletePromotion(
     @Param('id', ParseUUIDPipe) id: string,

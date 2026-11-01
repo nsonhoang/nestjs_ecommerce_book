@@ -20,9 +20,9 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { BookImageRequestDto } from './dto/book-image.request';
 import { UploadFile } from 'src/media/media.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -67,8 +67,8 @@ export class ImageBookController {
   })
   @ApiOkResponse({ description: 'Upload ảnh sách thành công' })
   @Post('')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.BOOK_IMAGE_UPLOAD)
   @UseInterceptors(
     FilesInterceptor(
       'files',
@@ -114,8 +114,8 @@ export class ImageBookController {
   })
   @ApiOkResponse({ description: 'Xóa ảnh sách thành công' })
   @Delete()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.BOOK_IMAGE_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteImageByPublicId(@Body('publicId') publicId: string[]) {
     await this.imageBookService.deleteImageByPublicId(publicId);
@@ -127,8 +127,8 @@ export class ImageBookController {
   @ApiParam({ name: 'id', description: 'Book image id' })
   @ApiOkResponse({ description: 'Xóa ảnh sách thành công' })
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.BOOK_IMAGE_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteImageById(@Param('id') id: string) {
     await this.imageBookService.deleteImageById(id);

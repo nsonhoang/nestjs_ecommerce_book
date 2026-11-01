@@ -3,9 +3,9 @@ import { minutes, Throttle } from '@nestjs/throttler';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { type RequestWithUser } from '../users/user.controller';
-import { AuthRole } from '../roles/roles.enum';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import { ApiResponse } from 'src/common/api-response';
 import { NotificationUsersRequestDto } from './dto/notification-users.request.dto';
 import {
@@ -29,8 +29,8 @@ export class NotificationsController {
   @ApiBody({ type: NotificationUsersRequestDto })
   @ApiOkResponse({ description: 'Gửi thông báo thành công' })
   @Post('send')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.NOTIFICATION_SEND)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async sendNotificationToManyUsers(@Body() body: NotificationUsersRequestDto) {
     await this.notificationsService.sendNotificationToUsers(

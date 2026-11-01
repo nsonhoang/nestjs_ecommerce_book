@@ -28,7 +28,7 @@ import { AuthRole } from '../roles/roles.enum';
 import { RoleService } from '../roles/role.service';
 import { UserService } from '../users/user.service';
 import { NotificationsService } from '../notifications/notifications.service';
-
+import { PermissionsService } from '../permissions/permissions.service';
 import { AuthChangePasswordRequestDto } from './dto/auth-change-password.request.dto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -57,6 +57,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
     private readonly roleService: RoleService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   //xử lý global exception
@@ -83,6 +84,7 @@ export class AuthService {
         user.email,
         user.role.name,
         sessionId,
+        user.role.id,
       );
 
       const isProd = process.env.NODE_ENV === 'production';
@@ -164,16 +166,22 @@ export class AuthService {
         );
       }
 
+      const permissions = await this.permissionsService.getPermissionsByRoleId(
+        user.role.id,
+      );
+
       return {
         accessToken: this.generateAccessToken(
           user.id,
           user.email,
           user.role.name,
+          user.role.id,
         ),
         expiresAt: 900000, // 15 phút
         // Tạo CSRF token và gửi về client,
         csrfToken: csrfToken,
         tokenType: 'Bearer',
+        permissions,
       };
     } catch (error) {
       this.logger.error('Failed to login user', error);
@@ -329,12 +337,14 @@ export class AuthService {
         userId: payload.sub,
         email: payload.email,
         role: payload.role,
-      } as JwtUser;
+        roleId: payload.roleId,
+      };
 
       const newAccessToken = this.generateAccessToken(
         userLike.userId,
         userLike.email,
         userLike.role,
+        payload.roleId,
       );
 
       const newRefreshToken = this.generateRefreshToken(
@@ -342,9 +352,8 @@ export class AuthService {
         userLike.email,
         userLike.role,
         payload.sessionId,
+        payload.roleId,
       );
-
-      //đưa refresh token mới vào redis, với key là userId, value là refresh token,
       // và set expire time trùng với thời gian hết hạn của refresh token
       await this.redis.set(
         `refreshToken:${payload.sessionId}`,
@@ -400,11 +409,16 @@ export class AuthService {
         path: '/v1/auth/refresh-token',
       });
 
+      const permissions = payload.roleId
+        ? await this.permissionsService.getPermissionsByRoleId(payload.roleId)
+        : [];
+
       return {
         accessToken: newAccessToken,
         expiresAt: 900000,
         csrfToken: newCsrfToken,
         tokenType: 'Bearer',
+        permissions,
       };
     } catch {
       throw new UnauthorizedException(
@@ -695,11 +709,13 @@ export class AuthService {
     userId: string,
     email: string,
     role: string,
+    roleId?: string,
   ): string {
     return this.jwtService.sign({
       sub: userId,
       email: email,
       role: role,
+      roleId: roleId,
     });
   }
 
@@ -708,6 +724,7 @@ export class AuthService {
     email: string,
     role: string,
     sessionId: string,
+    roleId?: string,
   ): string {
     return this.jwtService.sign(
       {
@@ -715,6 +732,7 @@ export class AuthService {
         email: email,
         role: role,
         sessionId: sessionId,
+        roleId: roleId,
       },
       {
         expiresIn: '7d',

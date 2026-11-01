@@ -5,9 +5,9 @@ import { ShipmentsService } from './shipments.service';
 import { PaginateShipmentsDto } from './dto/paginate-shipments.dto';
 import { Prisma } from 'generated/prisma/client';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -34,8 +34,8 @@ export class ShipmentsController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiOkResponse({ description: 'Lấy danh sách shipment thành công' })
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.SHIPMENT_READ)
   async getAllShipments(
     @Query() query: PaginateShipmentsDto,
   ): Promise<ApiResponse<PaginatedResult<ShipmentWithOrder>>> {
@@ -47,8 +47,8 @@ export class ShipmentsController {
   @ApiParam({ name: 'orderId', description: 'Order id' })
   @ApiOkResponse({ description: 'Lấy shipment theo orderId thành công' })
   @Get('/order/:orderId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.SHIPMENT_READ)
   async getShipmentByOrderId(@Param('orderId') orderId: string) {
     return this.shipmentsService.getShipmentByOrderId(orderId);
   }
@@ -57,8 +57,8 @@ export class ShipmentsController {
   @ApiParam({ name: 'id', description: 'Shipment id' })
   @ApiOkResponse({ description: 'Lấy shipment theo id thành công' })
   @Get('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.SHIPMENT_READ)
   async getShipmentById(@Param('id') id: string) {
     return this.shipmentsService.getShipmentById(id);
   }

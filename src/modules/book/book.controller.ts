@@ -27,9 +27,9 @@ import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateBookDto } from './dto/paginate-book.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { AuthRole } from '../roles/roles.enum';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { AppPermission } from '../permissions/permissions.enum';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -92,8 +92,8 @@ export class BookController {
   })
   @Post('')
   @HttpCode(HttpStatus.CREATED) // Thêm mã 201 cho đúng chuẩn tạo mới
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.BOOK_CREATE)
   @UseInterceptors(FileInterceptor('file'))
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   @ApiBearerAuth() // Hiện ổ khóa JWT
@@ -135,8 +135,8 @@ export class BookController {
   @ApiBody({ type: BookUpdateRequestDto })
   @ApiOkResponse({ description: 'Cập nhật sách thành công' })
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.BOOK_UPDATE)
   @UseInterceptors(FileInterceptor('file'))
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   @ApiConsumes('multipart/form-data')
@@ -171,8 +171,8 @@ export class BookController {
   @ApiParam({ name: 'id', description: 'Book id' })
   @ApiOkResponse({ description: 'Xóa sách thành công' })
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AuthRole.ADMIN, AuthRole.STAFF)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(AppPermission.BOOK_DELETE)
   @Throttle({ default: { ttl: minutes(1), limit: 20 } })
   async deleteBook(@Param('id') id: string) {
     await this.bookService.deleteBook(id);
