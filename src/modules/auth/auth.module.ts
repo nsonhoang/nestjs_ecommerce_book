@@ -6,14 +6,14 @@ import { PassportModule } from '@nestjs/passport';
 
 import { AuthService } from './auth.service';
 
-import { UserModule } from '../users/user.module';
+import { UserModule } from '../users';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { AuthController } from './auth.controller';
-import { RedisModule } from '../redis/redis.module';
-import { RoleModule } from '../roles/role.module';
-import { NotificationsModule } from '../notifications/notifications.module';
+import { RedisModule } from '../redis';
+import { RoleModule } from '../roles';
+import { NotificationsModule } from '../notifications';
 
-import { MailModule } from '../mail/mail.module';
+import { MailModule } from '../mail';
 import { ResetPasswordConfirmStrategy } from 'src/strategies/reset-password.strategy';
 
 @Module({

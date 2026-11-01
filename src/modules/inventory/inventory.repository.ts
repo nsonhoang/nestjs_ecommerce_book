@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { getPagination, buildMeta } from 'src/utils/pagination.util';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma';
 import {
   InventoryLogCommand,
   InventoryRequestDto,

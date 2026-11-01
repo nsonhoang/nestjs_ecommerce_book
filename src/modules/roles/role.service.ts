@@ -7,7 +7,7 @@ import {
 import { RolesRequestDto } from '../roles/dto/roles.dto.request';
 import { RolesResponseDto } from '../roles/dto/roles.response.dto';
 import { RoleRepository } from './role.repository';
-import { PermissionsService } from '../permissions/permissions.service';
+import { PermissionsService } from '../permissions';
 
 @Injectable()
 export class RoleService {

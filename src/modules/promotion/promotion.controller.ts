@@ -22,7 +22,7 @@ import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import { PromotionNotifyRequestDto } from './dto/promotion-notify.request.dto';
 import {
   ApiBearerAuth,

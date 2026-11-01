@@ -13,7 +13,7 @@ import { PromotionUpdateRequestDto } from './dto/promotion-update.request.dto';
 import { PaginatePromotionDto } from './dto/pagination-promotion.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService } from '../notifications';
 
 @Injectable()
 export class PromotionService {

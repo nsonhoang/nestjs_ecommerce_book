@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma';
 import { PromotionRequestDto } from './dto/promotion.request.dto';
 import { PromotionResponseDto } from './dto/promotion.response';
 import { PromotionUpdateRequestDto } from './dto/promotion-update.request.dto';

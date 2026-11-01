@@ -9,7 +9,7 @@ import {
   WardResponse,
   DistrictResponse,
 } from './dto/ghn.response.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { GhnRepository } from './ghn.repository';
 import { GhnCalculateFeeRequestDto } from './dto/calculate-fee.request.dto';

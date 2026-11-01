@@ -1,3 +1,5 @@
+import type { Request } from 'express';
+
 export interface JwtPayload {
   sub: string;
   sessionId?: string;
@@ -13,3 +15,5 @@ export interface JwtUser {
   role: string;
   roleId?: string;
 }
+
+export type RequestWithUser = Request & { user: JwtUser };

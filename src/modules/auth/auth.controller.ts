@@ -21,10 +21,10 @@ import { AuthResponse } from './auth.interface';
 import { AuthRequestDto } from './dto/auth.request.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
-import { UserResponseDto } from '../users/dto/user-response.dto';
+import { IUserProfile } from '../users';
 import { minutes, Throttle } from '@nestjs/throttler';
 import { AuthChangePasswordRequestDto } from './dto/auth-change-password.request.dto';
-import { type RequestWithUser } from '../users/user.controller';
+import { type RequestWithUser } from 'src/strategies/jwt-payload.interface';
 import { ResetPasswordRequestDto } from './dto/reset-password.requset.dto';
 import { ResetPasswordConfirmGuard } from 'src/strategies/reset-passwword-confirm.decorator';
 import { ValidateOtpRequestDto } from './dto/validate-otp.request.dto';
@@ -94,7 +94,7 @@ export class AuthController {
   async confirmEmailRegistration(
     @Body() data: ValidateOtpRequestDto,
     @Param('otpToken') otpToken: string,
-  ): Promise<ApiResponse<UserResponseDto>> {
+  ): Promise<ApiResponse<IUserProfile>> {
     const result = await this.authService.confirmEmailRegistration(
       data.otp,
       otpToken,

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "nestjs-modular-monolith": {
+      "source": "tech-leads-club/agent-skills",
+      "sourceType": "github",
+      "skillPath": "packages/skills-catalog/skills/(development)/nestjs-modular-monolith/SKILL.md",
+      "computedHash": "e61f2fb9e2371b4c345d24201b39b45628e21939aa2ce24f91b38d937f96c46c"
+    }
+  }
+}

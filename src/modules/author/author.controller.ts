@@ -18,7 +18,7 @@ import { AuthorUpdateRequestDto } from './dto/author-update.request.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import {
   ApiBearerAuth,
   ApiBody,

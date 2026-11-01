@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../prisma';
 import { BookController } from './book.controller';
 import { BookService } from './book.service';
 import { BookRepository } from './book.repository';
-import { AuthorModule } from '../author/author.module';
-import { CategoryModule } from '../categories/category.module';
+import { AuthorModule } from '../author';
+import { CategoryModule } from '../categories';
 import { MediaModule } from 'src/media/media.module';
-import { ImageBookModule } from '../image-book/image-book.module';
+import { ImageBookModule } from '../image-book';
 
 @Module({
   imports: [

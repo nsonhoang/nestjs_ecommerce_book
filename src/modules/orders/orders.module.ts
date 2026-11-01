@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
-import { BookModule } from '../book/book.module';
-import { CartsModule } from '../carts/carts.module';
-import { InventoryModule } from '../inventory/inventory.module';
-import { PromotionModule } from '../promotion/promotion.module';
-import { PrismaModule } from '../prisma/prisma.module';
-import { AddressModule } from '../address/address.module';
-import { VouchersModule } from '../vouchers/vouchers.module';
+import { BookModule } from '../book';
+import { CartsModule } from '../carts';
+import { InventoryModule } from '../inventory';
+import { PromotionModule } from '../promotion';
+import { PrismaModule } from '../prisma';
+import { AddressModule } from '../address';
+import { VouchersModule } from '../vouchers';
 import { OrdersController } from './orders.controller';
 import { OrdersRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
-import { GhnModule } from '../ghn/ghn.module';
-import { ShipmentsModule } from '../shipments/shipments.module';
-import { NotificationsModule } from '../notifications/notifications.module';
+import { GhnModule } from '../ghn';
+import { ShipmentsModule } from '../shipments';
+import { NotificationsModule } from '../notifications';
 
 @Module({
   imports: [

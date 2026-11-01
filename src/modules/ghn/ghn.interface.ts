@@ -45,3 +45,21 @@ export interface IGhnCreateOrderResponse {
     total: number;
   };
 }
+
+export interface IGhnProvince {
+  ProvinceID: number;
+  ProvinceName: string;
+  slug?: string;
+}
+
+export interface IGhnDistrict {
+  DistrictID: number;
+  ProvinceID: number;
+  DistrictName: string;
+}
+
+export interface IGhnWard {
+  WardCode: string;
+  DistrictID: number;
+  WardName: string;
+}

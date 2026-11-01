@@ -5,8 +5,7 @@ import { AddressResponseDTO } from './dto/address.response';
 import { AddressRequestDTO } from './dto/address.request.dto';
 import { AddressRepository } from './address.repository';
 import type { AddressWithLocation } from './address.repository';
-import { GhnService } from '../ghn/ghn.service';
-import { WardResponse } from '../ghn/dto/ghn.response.dto';
+import { GhnService, IGhnWard } from '../ghn';
 
 @Injectable()
 export class AddressService {
@@ -20,8 +19,8 @@ export class AddressService {
   private async resolveWardFromApi(input: {
     districtId: number;
     wardCode: string;
-  }): Promise<WardResponse> {
-    const wards: WardResponse[] = await this.ghnService.getWardsByDistrict(
+  }): Promise<IGhnWard> {
+    const wards: IGhnWard[] = await this.ghnService.getWardsByDistrict(
       input.districtId,
     );
     const ward = wards.find((w) => w.WardCode === input.wardCode);
@@ -57,7 +56,7 @@ export class AddressService {
         throw new NotFoundException('Quận/Huyện không tồn tại');
       }
 
-      const ward: WardResponse = await this.resolveWardFromApi({
+      const ward: IGhnWard = await this.resolveWardFromApi({
         districtId: createAddressDto.districtId,
         wardCode: createAddressDto.wardCode,
       });
@@ -84,7 +83,7 @@ export class AddressService {
 
   async findAll(): Promise<AddressResponseDTO[]> {
     const addresses = await this.addressRepository.findAll();
-    const wardCache = new Map<number, WardResponse[]>();
+    const wardCache = new Map<number, IGhnWard[]>();
 
     return Promise.all(
       addresses.map(async (address) => {
@@ -121,13 +120,13 @@ export class AddressService {
   async findAllForUser(userId: string): Promise<AddressResponseDTO[]> {
     const addresses: AddressWithLocation[] =
       await this.addressRepository.findAllForUser(userId);
-    const wardCache = new Map<number, WardResponse[]>();
+    const wardCache = new Map<number, IGhnWard[]>();
 
     return Promise.all(
       addresses.map(async (address): Promise<AddressResponseDTO> => {
         const districtId: number = address.district.DistrictID;
 
-        let wards: WardResponse[] | undefined = wardCache.get(districtId);
+        let wards: IGhnWard[] | undefined = wardCache.get(districtId);
         if (!wards) {
           wards = await this.ghnService.getWardsByDistrict(districtId);
           wardCache.set(districtId, wards);

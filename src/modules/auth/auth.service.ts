@@ -15,20 +15,18 @@ import { AuthRequestDto } from './dto/auth.request.dto';
 
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '../users/user.interface';
+import { User } from '../users';
 import { AuthResponse } from './auth.interface';
 import { Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { JwtPayload, JwtUser } from 'src/strategies/jwt-payload.interface';
-import { REDIS } from '../redis/redis.module';
+import { REDIS } from '../redis';
 import type Redis from 'ioredis';
 import { AuthRegisterRequestDto } from './dto/auth-register.request.dto';
-import { UserResponseDto } from '../users/dto/user-response.dto';
-import { AuthRole } from '../roles/roles.enum';
-import { RoleService } from '../roles/role.service';
-import { UserService } from '../users/user.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { PermissionsService } from '../permissions/permissions.service';
+import { IUserProfile, UserService } from '../users';
+import { AuthRole, RoleService } from '../roles';
+import { NotificationsService } from '../notifications';
+import { PermissionsService } from '../permissions';
 import { AuthChangePasswordRequestDto } from './dto/auth-change-password.request.dto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -256,7 +254,7 @@ export class AuthService {
   async confirmEmailRegistration(
     otp: string,
     otpToken: string,
-  ): Promise<UserResponseDto> {
+  ): Promise<IUserProfile> {
     const validateResult = await this.validateOTP(otp, otpToken);
     const pendingData = await this.redis.get(`user-pending:${otpToken}`);
     if (!validateResult || !pendingData) {

@@ -9,16 +9,16 @@ import {
 
 import { BookRepository } from './book.repository';
 import { BookRequestDto } from './dto/book.request.dto';
-import { CategoryService } from '../categories/category.service';
-import { AuthorService } from '../author/author.service';
+import { CategoryService } from '../categories';
+import { AuthorService } from '../author';
 import { BookUpdateRequestDto } from './dto/book-update.request.dto';
 import { BookResponseDto } from './dto/book.response.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateBookDto } from './dto/paginate-book.dto';
 import { MediaService, UploadFile } from 'src/media/media.service';
 import { ImagePosition } from 'src/common/Enum/image-position.enum';
-import { ImageBookService } from '../image-book/image-book.service';
-import { PromotionResponseDto } from '../promotion/dto/promotion.response';
+import { ImageBookService } from '../image-book';
+import { IPromotionItem } from '../promotion';
 import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
@@ -83,7 +83,7 @@ export class BookService {
     }
   }
 
-  private getMaxDiscount(promotions: PromotionResponseDto[]): number {
+  private getMaxDiscount(promotions: IPromotionItem[]): number {
     if (!promotions || promotions.length === 0) return 0;
 
     // Lấy ra mức giảm sâu nhất

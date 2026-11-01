@@ -16,7 +16,7 @@ import { ApiResponse } from 'src/common/api-response';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateVouchersDto } from 'src/modules/vouchers/dto/pagination-vouchers.dto';
 import { VouchersRequestDto } from 'src/modules/vouchers/dto/vouchers.request.dto';

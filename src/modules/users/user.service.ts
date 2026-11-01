@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { UserRepository } from './user.repository';
-import { PermissionsService } from '../permissions/permissions.service';
+import { PermissionsService } from '../permissions';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserQueryDto } from './dto/user-query.dto';

@@ -18,7 +18,7 @@ import { ApiResponse } from 'src/common/api-response';
 
 import { AddressResponseDTO } from './dto/address.response';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { type RequestWithUser } from '../users/user.controller';
+import { type RequestWithUser } from 'src/strategies/jwt-payload.interface';
 import {
   ApiBearerAuth,
   ApiBody,

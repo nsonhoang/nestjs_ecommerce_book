@@ -2,16 +2,16 @@
 jest.mock('./book.repository', () => ({
   BookRepository: jest.fn().mockImplementation(() => ({})),
 }));
-jest.mock('../categories/category.service', () => ({
+jest.mock('../categories', () => ({
   CategoryService: jest.fn().mockImplementation(() => ({})),
 }));
-jest.mock('../author/author.service', () => ({
+jest.mock('../author', () => ({
   AuthorService: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('src/media/media.service', () => ({
   MediaService: jest.fn().mockImplementation(() => ({})),
 }));
-jest.mock('../image-book/image-book.service', () => ({
+jest.mock('../image-book', () => ({
   ImageBookService: jest.fn().mockImplementation(() => ({})),
 }));
 

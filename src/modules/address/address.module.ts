@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { AddressService } from './address.service';
 import { AddressController } from './address.controller';
 
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../prisma';
 import { AddressRepository } from './address.repository';
-import { GhnModule } from '../ghn/ghn.module';
+import { GhnModule } from '../ghn';
 
 @Module({
   imports: [PrismaModule, GhnModule],

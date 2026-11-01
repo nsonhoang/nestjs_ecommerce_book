@@ -11,7 +11,7 @@ import { ReviewRepository } from './review.repository';
 import { ReviewCreateRequestDto } from './dto/review-create.request.dto';
 import { ReviewUpdateRequestDto } from './dto/review-update.request.dto';
 import { ReviewResponseDto } from './dto/review.response.dto';
-import { OrdersService } from '../orders/orders.service';
+import { OrdersService } from '../orders';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 

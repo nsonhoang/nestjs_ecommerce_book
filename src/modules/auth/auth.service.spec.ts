@@ -22,23 +22,29 @@ import {
 } from '@jest/globals';
 import { AuthService } from './auth.service';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { REDIS } from '../redis/redis.module';
-import { UserService } from '../users/user.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { RoleService } from '../roles/role.service';
-import { PermissionsService } from '../permissions/permissions.service';
+import { REDIS } from '../redis';
+import { UserService } from '../users';
+import { NotificationsService } from '../notifications';
+import { RoleService } from '../roles';
+import { PermissionsService } from '../permissions';
 // Important: AuthService imports modules that depend on Prisma.
 // For unit tests, mock them so Jest doesn't load the Prisma generated client.
-jest.mock('../users/user.service', () => ({
+jest.mock('../users', () => ({
   UserService: class UserService {},
 }));
-jest.mock('../roles/role.service', () => ({
+jest.mock('../roles', () => ({
   RoleService: class RoleService {},
+  AuthRole: {
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    ADMIN: 'ADMIN',
+    STAFF: 'STAFF',
+    USER: 'USER',
+  },
 }));
-jest.mock('../notifications/notifications.service', () => ({
+jest.mock('../notifications', () => ({
   NotificationsService: class NotificationsService {},
 }));
-jest.mock('../permissions/permissions.service', () => ({
+jest.mock('../permissions', () => ({
   PermissionsService: class PermissionsService {},
 }));
 describe('AuthService (unit)', () => {

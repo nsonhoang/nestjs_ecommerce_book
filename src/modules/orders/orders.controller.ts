@@ -24,7 +24,7 @@ import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { UpdateOrderStatusRequestDto } from './dto/update-order-status.request.dto';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import {
   ApiBearerAuth,
   ApiBody,

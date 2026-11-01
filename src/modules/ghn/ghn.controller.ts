@@ -20,7 +20,7 @@ import {
   WardResponse,
 } from './dto/ghn.response.dto';
 import { GhnCalculateShippingRequestDto } from './dto/calculate-shipping.request.dto';
-import { ShipmentsService } from '../shipments/shipments.service';
+import { ShipmentsService } from '../shipments';
 import { GhnWebhookGuard } from './ghn-webhook.guard';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import {

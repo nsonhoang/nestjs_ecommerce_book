@@ -4,10 +4,10 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GhnService } from './ghn.service';
 
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../prisma';
 import { GhnRepository } from './ghn.repository';
 import { GhnController } from './ghn.controller';
-import { ShipmentsModule } from '../shipments/shipments.module';
+import { ShipmentsModule } from '../shipments';
 
 @Module({
   imports: [

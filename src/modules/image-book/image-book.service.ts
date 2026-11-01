@@ -6,7 +6,7 @@ import { ImagePosition } from 'src/common/Enum/image-position.enum';
 import { BookImageResponseDto } from './dto/book-image.response';
 import { BookImageRequestDto } from './dto/book-image.request';
 
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma';
 
 @Injectable()
 export class ImageBookService {

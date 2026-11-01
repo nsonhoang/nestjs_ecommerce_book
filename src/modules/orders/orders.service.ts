@@ -10,25 +10,22 @@ import {
 import { Prisma } from 'generated/prisma/client';
 import { OrderPaymentMethod, OrderStatus } from 'generated/prisma/enums';
 
-import { CartsService } from '../carts/carts.service';
-import { InventoryService } from '../inventory/inventory.service';
-import { BookService } from '../book/book.service';
-import { PromotionService } from '../promotion/promotion.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { CartsService, ICartItem } from '../carts';
+import { InventoryService } from '../inventory';
+import { BookService } from '../book';
+import { PromotionService } from '../promotion';
+import { PrismaService } from '../prisma';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
 import { CreateOrderRequestDto } from './dto/create-order.request.dto';
 import { OrderResponseDto } from './dto/order.response.dto';
 import { OrdersRepository } from './orders.repository';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
-import { VouchersService } from '../vouchers/vouchers.service';
-import { AddressService } from '../address/address.service';
-import { GhnService } from '../ghn/ghn.service';
-import { IGhnCreateOrderRequest } from '../ghn/ghn.interface';
-
-import { ShipmentsService } from '../shipments/shipments.service';
-import { CartItemResponseDto } from '../carts/dto/cart.response.dto';
-import { NotificationsService } from '../notifications/notifications.service';
+import { VouchersService } from '../vouchers';
+import { AddressService } from '../address';
+import { GhnService, IGhnCreateOrderRequest } from '../ghn';
+import { ShipmentsService } from '../shipments';
+import { NotificationsService } from '../notifications';
 
 type OrderItemPayload = {
   bookId: string;
@@ -629,7 +626,7 @@ export class OrdersService {
   // hàm này để kiểm tra và tính tiền tiền của  item
 
   private async validateAndPrepareOrderItems(
-    filteredItems: CartItemResponseDto[],
+    filteredItems: ICartItem[],
     promotionLookup: Map<string, number>,
     // subtotalAmount: number,
     // promotionDiscountAmount: number,

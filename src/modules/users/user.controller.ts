@@ -19,7 +19,7 @@ import { ApiResponse } from 'src/common/api-response';
 import { UserResponseDto } from './dto/user-response.dto';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import { UserQueryDto } from './dto/user-query.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import {

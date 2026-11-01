@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
-import { RedisModule } from '../redis/redis.module';
+import { PrismaModule } from '../prisma';
+import { RedisModule } from '../redis';
 import { PermissionsController } from './permissions.controller';
 import { PermissionsRepository } from './permissions.repository';
 import { PermissionsService } from './permissions.service';

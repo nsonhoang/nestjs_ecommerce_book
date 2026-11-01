@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
 import { MediaModule } from 'src/media/media.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { PrismaModule } from 'src/modules/prisma/prisma.module';
-import { NotificationsModule } from 'src/modules/notifications/notifications.module';
+import { PrismaModule } from 'src/modules/prisma';
+import { NotificationsModule } from 'src/modules/notifications';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
 import { APP_GUARD } from '@nestjs/core';
-import { MailModule } from 'src/modules/mail/mail.module';
+import { MailModule } from 'src/modules/mail';
 
 @Module({
   imports: [

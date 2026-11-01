@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from 'generated/prisma/client';
 import { OrderStatus } from 'generated/prisma/enums';
 
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma';
 import { OrderResponseDto } from './dto/order.response.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';

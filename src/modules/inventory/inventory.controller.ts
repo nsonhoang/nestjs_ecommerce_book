@@ -26,8 +26,8 @@ import PaginateInventoryLogsDto from './dto/paginate-inventory-logs.dto';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
-import { type RequestWithUser } from '../users/user.controller';
+import { AppPermission } from '../permissions';
+import { type RequestWithUser } from 'src/strategies/jwt-payload.interface';
 import {
   ApiBearerAuth,
   ApiBody,

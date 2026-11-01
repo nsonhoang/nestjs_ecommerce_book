@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import { PrismaModule } from '../prisma/prisma.module';
-import { InventoryModule } from '../inventory/inventory.module';
-import { BookModule } from '../book/book.module';
+import { PrismaModule } from '../prisma';
+import { InventoryModule } from '../inventory';
+import { BookModule } from '../book';
 import { ShipmentsRepository } from './shipments.repository';
 import { ShipmentsService } from './shipments.service';
 import { ShipmentsController } from './shipment.controller';
 
-import { NotificationsModule } from '../notifications/notifications.module';
+import { NotificationsModule } from '../notifications';
 
 @Module({
   imports: [PrismaModule, NotificationsModule, InventoryModule, BookModule],

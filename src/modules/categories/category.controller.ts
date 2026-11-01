@@ -15,7 +15,7 @@ import { CategoryService } from './category.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import { CategoryRequestDto } from './dto/categories.request.dto';
 import { CategoryResponseDto } from './dto/categories.response.dto';
 import {

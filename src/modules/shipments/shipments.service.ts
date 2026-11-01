@@ -3,12 +3,12 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ShipmentsRepository } from './shipments.repository';
 import { ShipmentRequestDto } from './dto/shipments.request.dto';
 import { OrderStatus, Prisma } from 'generated/prisma/client';
-import { InventoryService } from '../inventory/inventory.service';
-import { BookService } from '../book/book.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { InventoryService } from '../inventory';
+import { BookService } from '../book';
+import { PrismaService } from '../prisma';
 import { PaginateShipmentsDto } from './dto/paginate-shipments.dto';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService } from '../notifications';
 
 type ShipmentWithOrder = Prisma.ShipmentGetPayload<{
   include: { order: true };

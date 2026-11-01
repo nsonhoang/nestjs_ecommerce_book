@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificationsRepository } from './notifications.repository';
 import { NotificationsService } from './notifications.service';
 
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../prisma';
 import { NotificationsController } from './notifications.controller';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationsProcessor } from './notifications.processor';

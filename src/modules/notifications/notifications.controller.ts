@@ -2,10 +2,10 @@ import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { minutes, Throttle } from '@nestjs/throttler';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from 'src/strategies/current-user.decorator';
-import { type RequestWithUser } from '../users/user.controller';
+import { type RequestWithUser } from 'src/strategies/jwt-payload.interface';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
-import { AppPermission } from '../permissions/permissions.enum';
+import { AppPermission } from '../permissions';
 import { ApiResponse } from 'src/common/api-response';
 import { NotificationUsersRequestDto } from './dto/notification-users.request.dto';
 import {

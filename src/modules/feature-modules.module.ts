@@ -1,22 +1,22 @@
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from './auth/auth.module';
-import { AuthorModule } from './author/author.module';
-import { BookModule } from './book/book.module';
-import { CategoryModule } from './categories/category.module';
-import { ImageBookModule } from './image-book/image-book.module';
-import { RoleModule } from './roles/role.module';
-import { UserModule } from './users/user.module';
-import { AddressModule } from './address/address.module';
-import { GhnModule } from './ghn/ghn.module';
-import { InventoryModule } from './inventory/inventory.module';
-import { CartsModule } from './carts/carts.module';
-import { PromotionModule } from './promotion/promotion.module';
-import { OrdersModule } from './orders/orders.module';
-import { VouchersModule } from './vouchers/vouchers.module';
-import { ShipmentsModule } from './shipments/shipments.module';
-import { ReviewModule } from './review/review.module';
-import { PermissionsModule } from './permissions/permissions.module';
+import { AuthModule } from './auth';
+import { AuthorModule } from './author';
+import { BookModule } from './book';
+import { CategoryModule } from './categories';
+import { ImageBookModule } from './image-book';
+import { RoleModule } from './roles';
+import { UserModule } from './users';
+import { AddressModule } from './address';
+import { GhnModule } from './ghn';
+import { InventoryModule } from './inventory';
+import { CartsModule } from './carts';
+import { PromotionModule } from './promotion';
+import { OrdersModule } from './orders';
+import { VouchersModule } from './vouchers';
+import { ShipmentsModule } from './shipments';
+import { ReviewModule } from './review';
+import { PermissionsModule } from './permissions';
 @Module({
   imports: [
     UserModule,

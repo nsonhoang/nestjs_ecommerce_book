@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type Redis from 'ioredis';
-import { REDIS } from '../redis/redis.module';
+import { REDIS } from '../redis';
 import { PermissionsRepository } from './permissions.repository';
 import { GroupedPermissionsResponseDto } from './dto/grouped-permissions.response.dto';
 

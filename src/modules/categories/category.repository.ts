@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma';
 import { CategoryRequestDto } from './dto/categories.request.dto';
 import { CategoryResponseDto } from './dto/categories.response.dto';
 
