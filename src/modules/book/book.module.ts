@@ -4,6 +4,7 @@ import { PrismaModule } from '../prisma';
 import { BookController } from './book.controller';
 import { BookService } from './book.service';
 import { BookRepository } from './book.repository';
+import { BookOrderEventListener } from './listeners/order-events.listener';
 import { AuthorModule } from '../author';
 import { CategoryModule } from '../categories';
 import { MediaModule } from 'src/media/media.module';
@@ -18,7 +19,7 @@ import { ImageBookModule } from '../image-book';
     ImageBookModule,
   ],
   controllers: [BookController],
-  providers: [BookService, BookRepository],
+  providers: [BookService, BookRepository, BookOrderEventListener],
   exports: [BookService],
 })
 export class BookModule {}

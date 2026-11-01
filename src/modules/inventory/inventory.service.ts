@@ -119,6 +119,22 @@ export class InventoryService {
     );
   }
 
+  async reserveStock(
+    items: Array<{ bookId: string; quantity: number }>,
+    userId?: string,
+    reason = 'Xuất kho khi tạo đơn hàng',
+  ): Promise<void> {
+    await this.inventoryRepository.reserveStock(items, userId, reason);
+  }
+
+  async releaseStock(
+    items: Array<{ bookId: string; quantity: number }>,
+    userId?: string,
+    reason = 'Hoàn kho do đơn hàng bị hủy',
+  ): Promise<void> {
+    await this.inventoryRepository.releaseStock(items, userId, reason);
+  }
+
   async create(createInventoryDto: InventoryRequestDto) {
     try {
       const inventory =

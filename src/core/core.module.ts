@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MediaModule } from 'src/media/media.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaModule } from 'src/modules/prisma';
 import { NotificationsModule } from 'src/modules/notifications';
 import { BullModule } from '@nestjs/bullmq';
@@ -48,6 +49,10 @@ import { MailModule } from 'src/modules/mail';
       }),
     }),
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

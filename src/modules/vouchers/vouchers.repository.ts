@@ -194,4 +194,11 @@ export class VouchersRepository {
 
     return result.count > 0;
   }
+
+  async decrementUsedCount(id: string): Promise<void> {
+    await this.prismaService.voucher.update({
+      where: { id },
+      data: { usedCount: { decrement: 1 } },
+    });
+  }
 }

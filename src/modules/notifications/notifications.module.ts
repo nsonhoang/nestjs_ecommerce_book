@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma';
 import { NotificationsController } from './notifications.controller';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationsProcessor } from './notifications.processor';
+import { NotificationsOrderEventListener } from './listeners/order-events.listener';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { NotificationsProcessor } from './notifications.processor';
     NotificationsService,
     NotificationsRepository,
     NotificationsProcessor,
+    NotificationsOrderEventListener,
   ],
   exports: [NotificationsService],
   controllers: [NotificationsController],

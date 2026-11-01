@@ -234,6 +234,24 @@ export class VouchersService {
     return { voucher, discountAmount };
   }
 
+  async applyVoucher(input: {
+    code: string;
+    orderAmount: number;
+    userId: string;
+    now?: Date;
+  }): Promise<{ voucherId: string; discountAmount: number }> {
+    const validation = await this.validateVoucherForOrder(input);
+    await this.vouchersRepository.incrementUsedCount(validation.voucher.id);
+    return {
+      voucherId: validation.voucher.id,
+      discountAmount: validation.discountAmount,
+    };
+  }
+
+  async releaseVoucher(voucherId: string): Promise<void> {
+    await this.vouchersRepository.decrementUsedCount(voucherId);
+  }
+
   private normalizeCode(code: string): string {
     return code.trim().toUpperCase();
   }

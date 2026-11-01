@@ -12,7 +12,12 @@ import { OrderPaymentMethod, OrderStatus } from 'generated/prisma/enums';
 
 import { CartsService, ICartItem } from '../carts';
 import { InventoryService } from '../inventory';
-import { BookService } from '../book';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { OrderSagaOrchestrator } from './sagas/order-saga.orchestrator';
+import {
+  OrderStatusUpdatedEvent,
+  OrderCancelledEvent,
+} from './index';
 import { PromotionService } from '../promotion';
 import { PrismaService } from '../prisma';
 import { JwtUser } from 'src/strategies/jwt-payload.interface';
@@ -21,11 +26,11 @@ import { OrderResponseDto } from './dto/order.response.dto';
 import { OrdersRepository } from './orders.repository';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { PaginateOrderDto } from './dto/pagination-orders.dto';
-import { VouchersService } from '../vouchers';
+
 import { AddressService } from '../address';
 import { GhnService, IGhnCreateOrderRequest } from '../ghn';
 import { ShipmentsService } from '../shipments';
-import { NotificationsService } from '../notifications';
+
 
 type OrderItemPayload = {
   bookId: string;
@@ -51,12 +56,11 @@ export class OrdersService {
     private readonly addressService: AddressService,
     private readonly cartsService: CartsService,
     private readonly inventoryService: InventoryService,
-    private readonly bookService: BookService,
     private readonly promotionService: PromotionService,
-    private readonly vouchersService: VouchersService,
-    private readonly ghnService: GhnService, // gọi này để tính phí ship
+    private readonly ghnService: GhnService,
     private readonly shipmentsService: ShipmentsService,
-    private readonly notificationsService: NotificationsService,
+    private readonly orderSagaOrchestrator: OrderSagaOrchestrator,
+    private readonly eventEmitter: EventEmitter2,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -113,112 +117,18 @@ export class OrdersService {
 
       const orderCode = this.generateOrderCode();
 
-      const createdOrder = await this.prisma.$transaction(async (tx) => {
-        let voucherId: string | undefined;
-        let voucherDiscountAmount = 0;
-
-        if (request.voucherCode) {
-          const amountForVoucher = Math.max(
-            0,
-            subtotalAmount - promotionDiscountAmount,
-          );
-          const voucherResult = await this.vouchersService.applyVoucherForOrder(
-            tx,
-            {
-              code: request.voucherCode,
-              orderAmount: amountForVoucher,
-              userId: user.userId,
-            },
-          );
-          voucherId = voucherResult.voucherId;
-          voucherDiscountAmount = voucherResult.discountAmount;
-        }
-
-        /// tách logic ra
-        const discountAmountInTx =
-          promotionDiscountAmount + voucherDiscountAmount;
-        const amountBeforeShippingInTx = Math.max(
-          0,
-          subtotalAmount - discountAmountInTx,
-        );
-
-        // Tạo order trước (chưa tạo shipment/ship fee).
-        // NOTE: Đơn GHN + Shipment record sẽ được tạo khi cập nhật status sang PROCESSING.
-        const shippingFee = 0;
-        const totalAmount = amountBeforeShippingInTx + shippingFee;
-
-        // Xoá logic vi phạm cross-module dependency: cartItems, book soldCount nên được xử lý bởi Repository
-        // Nhưng tạm thời sửa theo ý user là "cod_value" trước.
-        const order = await this.ordersRepository.create(tx, {
-          code: orderCode, // cái này để hỗ trợ tìm kiếm đơn hàng
-          user: {
-            connect: { id: user.userId },
-          },
-          status: OrderStatus.PENDING,
-          paymentMethod: request.paymentMethod || OrderPaymentMethod.COD,
-          subtotalAmount,
-          discountAmount: discountAmountInTx,
-          shippingFee,
-          totalAmount,
-          returnRequestedAt: null,
-          shippingName: address.fullName,
-          shippingPhone: address.phone,
-          shippingAddress: address.addressLine,
-          shippingWard: address.ward.WardName,
-          shippingWardCode: address.ward.WardCode,
-          shippingDistrict: address.district.DistrictName,
-          shippingDistrictId: address.district.DistrictID,
-          shippingCity: address.province.ProvinceName,
-          shippingCountry: address.country ?? 'Vietnam',
-          note: request.note,
-          voucher: voucherId ? { connect: { id: voucherId } } : undefined,
-          items: {
-            create: items.map((item) => ({
-              bookId: item.bookId,
-              bookTitle: item.bookTitle,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discountAmount: item.discountAmount,
-              totalAmount: item.totalAmount,
-            })),
-          },
-        } as Prisma.OrderCreateInput);
-
-        for (const item of items) {
-          const updateStockCount =
-            await this.inventoryService.decrementStockAndLogByTx(
-              tx,
-              item.bookId,
-              item.quantity,
-              user.userId,
-              'Xuất kho khi tạo đơn hàng',
-            );
-
-          if (updateStockCount === 0) {
-            throw new BadRequestException(
-              `Sách ${item.bookTitle} vừa hết hàng`,
-            );
-          }
-
-          // Trì hoãn việc update soldCount hoặc update qua BookService
-          await this.bookService.updateSoldCountByTx(
-            tx,
-            item.bookId,
-            item.quantity,
-          );
-        }
-
-        await this.cartsService.deleteItemsByTx(
-          tx,
-          cart.id,
-          request.cardItemIds,
-        );
-
-        return order;
+      // KHỞI CHẠY SAGA ORCHESTRATION (Trừ voucher -> Trừ kho -> Tạo đơn -> Bắn event)
+      const createdOrder = await this.orderSagaOrchestrator.execute({
+        user,
+        request,
+        address,
+        orderCode,
+        items,
+        subtotalAmount,
+        promotionDiscountAmount,
+        reservedItems: [],
       });
 
-      // NOTE: Không tạo đơn GHN ở đây nữa.
-      // Đơn GHN + record Shipment sẽ được tạo khi người bán/admin cập nhật trạng thái sang PROCESSING.
       return this.mapOrder(createdOrder);
     } catch (error) {
       this.logger.error('Lỗi khi tạo order', error);
@@ -361,10 +271,15 @@ export class OrdersService {
             });
           });
 
-          await this.notificationsService.sendNotificationToUser(
-            order.userId,
-            'Đơn hàng đã được xác nhận trả về',
-            `Đơn hàng ${order.code} đã được xác nhận trả về và nhập lại kho.`,
+          this.eventEmitter.emit(
+            OrderStatusUpdatedEvent.EVENT_NAME,
+            new OrderStatusUpdatedEvent(
+              order.id,
+              order.code,
+              order.userId,
+              returnedStatus,
+              'Đơn hàng đã được xác nhận trả về và nhập lại kho.',
+            ),
           );
 
           return this.mapOrder(result);
@@ -473,11 +388,16 @@ export class OrdersService {
         });
       });
       // nổ thống báo tại đây
-      await this.notificationsService.sendNotificationToUser(
-        order.userId,
-        'Đơn hàng đã được cập nhật trạng thái',
-        `Đơn hàng ${order.code} của bạn đã được cập nhật và đang được xử lý.Ngày giao dự kiến: ${ghnOrder.expected_delivery_time ? new Date(ghnOrder.expected_delivery_time).toLocaleDateString() : 'Đang cập nhật'}. Cảm ơn bạn đã mua hàng!`,
-      ); // cái này là chi nổ khi admin cập nhật thôi chứ muốn trạng thái đổi liền phải thông qua webhook
+      this.eventEmitter.emit(
+        OrderStatusUpdatedEvent.EVENT_NAME,
+        new OrderStatusUpdatedEvent(
+          order.id,
+          order.code,
+          order.userId,
+          OrderStatus.PROCESSING,
+          `Đơn hàng ${order.code} của bạn đã được cập nhật và đang được xử lý. Ngày giao dự kiến: ${ghnOrder.expected_delivery_time ? new Date(ghnOrder.expected_delivery_time).toLocaleDateString() : 'Đang cập nhật'}. Cảm ơn bạn đã mua hàng!`,
+        ),
+      );
 
       return this.mapOrder(updatedOrder);
     } catch (error) {
@@ -538,10 +458,15 @@ export class OrdersService {
         status: OrderStatus.RETURNING,
         returnRequestedAt: new Date(),
       });
-      await this.notificationsService.sendNotificationToUser(
-        order.userId,
-        'Yêu cầu trả hàng đã được ghi nhận',
-        `Đơn hàng ${order.code} của bạn đã được chuyển sang trạng thái trả hàng.`,
+      this.eventEmitter.emit(
+        OrderStatusUpdatedEvent.EVENT_NAME,
+        new OrderStatusUpdatedEvent(
+          order.id,
+          order.code,
+          order.userId,
+          OrderStatus.RETURNING,
+          `Đơn hàng ${order.code} của bạn đã được chuyển sang trạng thái trả hàng.`,
+        ),
       );
 
       return this.mapOrder(updatedOrder);
@@ -594,23 +519,21 @@ export class OrdersService {
               `Không thể hoàn kho cho sách ${item.bookTitle}`,
             );
           }
-
-          await this.bookService.decreaseSoldCountByTx(
-            tx as Prisma.TransactionClient,
-            item.bookId,
-            item.quantity,
-          );
         }
-
         return await this.ordersRepository.updateByTx(tx, orderId, {
           status: OrderStatus.CANCELLED,
         });
       });
 
-      await this.notificationsService.sendNotificationToUser(
-        order.userId,
-        'Đơn hàng đã bị hủy',
-        `Đơn hàng ${order.code} của bạn đã được hủy thành công.`,
+      this.eventEmitter.emit(
+        OrderCancelledEvent.EVENT_NAME,
+        new OrderCancelledEvent(
+          order.id,
+          order.code,
+          order.userId,
+          'Đơn hàng đã được hủy thành công.',
+          order.items.map((i) => ({ bookId: i.bookId, quantity: i.quantity })),
+        ),
       );
 
       return this.mapOrder(cancelledOrder);

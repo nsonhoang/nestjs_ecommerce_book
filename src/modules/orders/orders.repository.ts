@@ -27,6 +27,14 @@ export class OrdersRepository {
     });
   }
 
+  async createOrder(
+    data: Prisma.OrderCreateInput,
+  ): Promise<Prisma.OrderGetPayload<{ include: typeof orderInclude }>> {
+    return await this.prisma.order.create({
+      data,
+      include: orderInclude,
+    });
+  }
   async findByFilter(
     paginationQuery: PaginateOrderDto,
   ): Promise<PaginatedResult<OrderResponseDto>> {

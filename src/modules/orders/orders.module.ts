@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { BookModule } from '../book';
 import { CartsModule } from '../carts';
 import { InventoryModule } from '../inventory';
 import { PromotionModule } from '../promotion';
@@ -11,7 +10,10 @@ import { OrdersRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
 import { GhnModule } from '../ghn';
 import { ShipmentsModule } from '../shipments';
-import { NotificationsModule } from '../notifications';
+import { OrderSagaOrchestrator } from './sagas/order-saga.orchestrator';
+import { ApplyVoucherStep } from './sagas/steps/apply-voucher.step';
+import { ReserveInventoryStep } from './sagas/steps/reserve-inventory.step';
+import { CreateOrderRecordStep } from './sagas/steps/create-order-record.step';
 
 @Module({
   imports: [
@@ -23,11 +25,16 @@ import { NotificationsModule } from '../notifications';
     VouchersModule,
     GhnModule,
     ShipmentsModule,
-    NotificationsModule,
-    BookModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService, OrdersRepository],
+  providers: [
+    OrdersService,
+    OrdersRepository,
+    OrderSagaOrchestrator,
+    ApplyVoucherStep,
+    ReserveInventoryStep,
+    CreateOrderRecordStep,
+  ],
   exports: [OrdersService],
 })
 export class OrdersModule {}

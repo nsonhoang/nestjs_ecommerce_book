@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PaginatedResult } from 'src/common/types/paginated-result.type';
 import { getPagination, buildMeta } from 'src/utils/pagination.util';
 import { PrismaService } from '../prisma';
@@ -181,6 +181,47 @@ export class InventoryRepository {
     });
 
     return 1;
+  }
+
+  async reserveStock(
+    items: Array<{ bookId: string; quantity: number }>,
+    userId?: string,
+    reason = 'Xuất kho khi tạo đơn hàng',
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        const count = await this.decrementStockAndLogByTx(
+          tx,
+          item.bookId,
+          item.quantity,
+          userId,
+          reason,
+        );
+        if (count === 0) {
+          throw new BadRequestException(
+            `Sách ID ${item.bookId} đã hết hàng trong kho`,
+          );
+        }
+      }
+    });
+  }
+
+  async releaseStock(
+    items: Array<{ bookId: string; quantity: number }>,
+    userId?: string,
+    reason = 'Hoàn kho do đơn hàng bị hủy',
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        await this.increaseStockAndLogByTx(
+          tx,
+          item.bookId,
+          item.quantity,
+          userId,
+          reason,
+        );
+      }
+    });
   }
 
   async createLogByTx(

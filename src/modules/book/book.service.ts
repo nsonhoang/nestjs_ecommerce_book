@@ -32,6 +32,14 @@ export class BookService {
     private readonly imageBookService: ImageBookService,
   ) {}
 
+  async updateSoldCount(bookId: string, quantity: number): Promise<void> {
+    await this.bookRepository.updateSoldCount(bookId, quantity);
+  }
+
+  async decreaseSoldCount(bookId: string, quantity: number): Promise<void> {
+    await this.bookRepository.decreaseSoldCount(bookId, quantity);
+  }
+
   async updateSoldCountByTx(
     tx: Prisma.TransactionClient,
     bookId: string,
@@ -39,7 +47,6 @@ export class BookService {
   ): Promise<void> {
     await this.bookRepository.updateSoldCountByTx(tx, bookId, quantity);
   }
-
   async decreaseSoldCountByTx(
     tx: Prisma.TransactionClient,
     bookId: string,

@@ -33,6 +33,19 @@ export class BookRepository {
     });
   }
 
+  async updateSoldCount(bookId: string, quantity: number): Promise<void> {
+    await this.prisma.book.update({
+      where: { id: bookId },
+      data: { soldCount: { increment: quantity } },
+    });
+  }
+
+  async decreaseSoldCount(bookId: string, quantity: number): Promise<void> {
+    await this.prisma.book.update({
+      where: { id: bookId },
+      data: { soldCount: { decrement: quantity } },
+    });
+  }
   async decreaseSoldCountByTx(
     tx: Prisma.TransactionClient,
     bookId: string,
